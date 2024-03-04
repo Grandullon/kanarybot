@@ -4,7 +4,7 @@
   "version": "0.0.1",
   "private": true,
   "dependencies": {
-    "node-red": "^2.2.2", // Asegúrate de usar la versión de Node-RED que corresponde a tus necesidades
+    "node-red": "^2.2.2",
     "node-red-contrib-github-plus": "~0.3.1",
     "node-red-contrib-telegrambot": "~15.1.9"
   },
