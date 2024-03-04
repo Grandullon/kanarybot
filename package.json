@@ -1,17 +1,20 @@
 {
-  "name": "node-red-project",
-  "description": "A Node-RED Project",
-  "version": "0.0.1",
-  "private": true,
-  "dependencies": {
-    "node-red": "^2.2.2",
-    "node-red-contrib-github-plus": "~0.3.1",
-    "node-red-contrib-telegrambot": "~15.1.9"
-  },
+  "name": "tu-aplicacion",
+  "version": "1.0.0",
+  "description": "Una descripción de tu aplicación",
+  "main": "index.js",
   "scripts": {
-    "start": "node node_modules/node-red/red.js --settings settings.js"
+    "start": "node tuArchivoPrincipal.js"
   },
   "engines": {
     "node": "14.x"
+  },
+  "dependencies": {
+    "node-red": "^2.2.2",
+    "otra-dependencia": "^1.0.0"
+  },
+  "devDependencies": {
+    "alguna-dependencia-dev": "^1.0.0"
   }
 }
+
