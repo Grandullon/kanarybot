@@ -1,0 +1,314 @@
+[
+    {
+        "id": "d292c460eb15eaa9",
+        "type": "tab",
+        "label": "Main",
+        "disabled": false,
+        "info": "",
+        "env": []
+    },
+    {
+        "id": "44200222a49c6f2c",
+        "type": "telegram bot",
+        "botname": "KanaryTokenBOT",
+        "usernames": "",
+        "chatids": "",
+        "baseapiurl": "",
+        "updatemode": "polling",
+        "pollinterval": "300",
+        "usesocks": false,
+        "sockshost": "",
+        "socksprotocol": "socks5",
+        "socksport": "6667",
+        "socksusername": "anonymous",
+        "sockspassword": "",
+        "bothost": "",
+        "botpath": "",
+        "localbotport": "8443",
+        "publicbotport": "8443",
+        "privatekey": "",
+        "certificate": "",
+        "useselfsignedcertificate": false,
+        "sslterminated": false,
+        "verboselogging": false
+    },
+    {
+        "id": "14f698de22db1f75",
+        "type": "telegram receiver",
+        "z": "d292c460eb15eaa9",
+        "name": "KanaryToken",
+        "bot": "44200222a49c6f2c",
+        "saveDataDir": "",
+        "filterCommands": false,
+        "x": 150,
+        "y": 320,
+        "wires": [
+            [
+                "85f22a3864eff64d"
+            ],
+            []
+        ]
+    },
+    {
+        "id": "bee9c4cca4a02406",
+        "type": "function",
+        "z": "d292c460eb15eaa9",
+        "name": "function 1",
+        "func": "msg.payload = {\n    \"content\" : \"Eres un crack\",\n    \"type\" : \"message\",\n    \"chatId\" : 714952561\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 320,
+        "y": 760,
+        "wires": [
+            [
+                "4fa5bd4eecce9d95"
+            ]
+        ]
+    },
+    {
+        "id": "63935b658fbda64c",
+        "type": "inject",
+        "z": "d292c460eb15eaa9",
+        "name": "",
+        "props": [
+            {
+                "p": "payload"
+            },
+            {
+                "p": "topic",
+                "vt": "str"
+            }
+        ],
+        "repeat": "",
+        "crontab": "",
+        "once": false,
+        "onceDelay": 0.1,
+        "topic": "",
+        "payload": "",
+        "payloadType": "date",
+        "x": 100,
+        "y": 760,
+        "wires": [
+            [
+                "bee9c4cca4a02406"
+            ]
+        ]
+    },
+    {
+        "id": "278dabee4bfbafdc",
+        "type": "switch",
+        "z": "d292c460eb15eaa9",
+        "name": "",
+        "property": "payload.content",
+        "propertyType": "msg",
+        "rules": [
+            {
+                "t": "eq",
+                "v": "hola",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "airdrop",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "/Tokenomic",
+                "vt": "str"
+            },
+            {
+                "t": "eq",
+                "v": "/Contacto",
+                "vt": "str"
+            }
+        ],
+        "checkall": "true",
+        "repair": false,
+        "outputs": 4,
+        "x": 570,
+        "y": 340,
+        "wires": [
+            [
+                "b9adc682aca6ba7d"
+            ],
+            [
+                "0782a9407eb0b592"
+            ],
+            [
+                "cdbc6e934f27b82e"
+            ],
+            [
+                "b7ef2df6ce4775cb"
+            ]
+        ]
+    },
+    {
+        "id": "b9adc682aca6ba7d",
+        "type": "function",
+        "z": "d292c460eb15eaa9",
+        "name": "Saludo",
+        "func": "msg.payload = {\n    \"content\" : \"Informacion de kanary\",\n    \"type\" : \"message\",\n    \"chatId\" : msg.payload.chatId,\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 280,
+        "wires": [
+            [
+                "6ad2b5c08c4c1ad8"
+            ]
+        ]
+    },
+    {
+        "id": "4fa5bd4eecce9d95",
+        "type": "telegram sender",
+        "z": "d292c460eb15eaa9",
+        "name": "",
+        "bot": "44200222a49c6f2c",
+        "haserroroutput": false,
+        "outputs": 1,
+        "x": 530,
+        "y": 760,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "6ad2b5c08c4c1ad8",
+        "type": "telegram sender",
+        "z": "d292c460eb15eaa9",
+        "name": "",
+        "bot": "44200222a49c6f2c",
+        "haserroroutput": false,
+        "outputs": 1,
+        "x": 1290,
+        "y": 220,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "0782a9407eb0b592",
+        "type": "function",
+        "z": "d292c460eb15eaa9",
+        "name": "Airdrop",
+        "func": "msg.payload = {\n    \"content\" : \"Llegas a tiempo. El airdrop sera repartido entre la comunidad activa de polkadot. De la siguiente manera:\",\n    \"type\" : \"message\",\n    \"chatId\" : msg.payload.chatId,\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 820,
+        "y": 320,
+        "wires": [
+            [
+                "6ad2b5c08c4c1ad8"
+            ]
+        ]
+    },
+    {
+        "id": "cdbc6e934f27b82e",
+        "type": "function",
+        "z": "d292c460eb15eaa9",
+        "name": "Tokenomic",
+        "func": "msg.payload = {\n    \"content\" : \"El tokenomic es increible. Peraprate\",\n    \"type\" : \"message\",\n    \"chatId\" : msg.payload.chatId,\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 360,
+        "wires": [
+            [
+                "6ad2b5c08c4c1ad8"
+            ]
+        ]
+    },
+    {
+        "id": "85f22a3864eff64d",
+        "type": "function",
+        "z": "d292c460eb15eaa9",
+        "name": "Memecoin",
+        "func": "// Verificar si el mensaje incluye la palabra \"meme\" ignorando mayúsculas/minúsculas\nif (msg.payload.content.toLowerCase().includes(\"meme\")) {\n    // Función para seleccionar un meme al azar\n    function selectRandomMeme() {\n        const memeUrls = [\n            \"https://i.postimg.cc/d18jMyVK/Meme1.jpg\",\n            \"https://i.postimg.cc/vHS9NztV/Meme10.jpg\",\n            \"https://i.postimg.cc/rsw0h0dj/Meme11.jpg\",\n            \"https://i.postimg.cc/Hn65H4GF/Meme12.jpg\",\n            \"https://i.postimg.cc/y6j0FBJn/Meme13.jpg\",\n            \"https://i.postimg.cc/brybKV5Q/Meme14.jpg\",\n            \"https://i.postimg.cc/W1FrLk5f/Meme15.jpg\",\n            \"https://i.postimg.cc/Gpvy91wF/Meme16.jpg\",\n            \"https://i.postimg.cc/wvVRccB3/Meme17.jpg\",\n            \"https://i.postimg.cc/3rtDkB6c/Meme18.jpg\",\n            \"https://i.postimg.cc/C1Yfq6SW/Meme19.jpg\",\n            \"https://i.postimg.cc/8cNBTz7f/Meme2.jpg\",\n            \"https://i.postimg.cc/qMg6yKHM/Meme20.jpg\",\n            \"https://i.postimg.cc/pLF91tdw/Meme21.jpg\",\n            \"https://i.postimg.cc/WzYDxNgv/Meme22.jpg\",\n            \"https://i.postimg.cc/65S20QBV/Meme23.jpg\",\n            \"https://i.postimg.cc/jj6DtQPv/Meme24.jpg\",\n            \"https://i.postimg.cc/k5P20h6B/Meme25.jpg\",\n            \"https://i.postimg.cc/SRPsDZbQ/Meme26.jpg\",\n            \"https://i.postimg.cc/bYVsyvSX/Meme27.jpg\",\n            \"https://i.postimg.cc/rm8Km09T/Meme28.jpg\",\n            \"https://i.postimg.cc/9000d6SN/Meme29.jpg\",\n            \"https://i.postimg.cc/ZKfFhZ40/Meme3.jpg\",\n            \"https://i.postimg.cc/zfMqmyPp/Meme30.jpg\",\n            \"https://i.postimg.cc/nz0MQFdD/Meme31.jpg\",\n            \"https://i.postimg.cc/6q862d2k/Meme32.png\",\n            \"https://i.postimg.cc/SQHYLsS6/Meme33.png\",\n            \"https://i.postimg.cc/NfyL5wRK/meme34.jpg\",\n            \"https://i.postimg.cc/mr4rXzJ9/Meme35.jpg\",\n            \"https://i.postimg.cc/BvCndZfV/Meme36.jpg\",\n            \"https://i.postimg.cc/hPHvm30p/Meme37.jpg\",\n            \"https://i.postimg.cc/GmG2xJ7r/Meme38.jpg\",\n            \"https://i.postimg.cc/PJ0XmP1P/Meme39.jpg\",\n            \"https://i.postimg.cc/d36R3cCH/Meme4.jpg\",\n            \"https://i.postimg.cc/tTSC4rTd/Meme40.jpg\",\n            \"https://i.postimg.cc/nzchZ8Hc/Meme41.jpg\",\n            \"https://i.postimg.cc/h4YtF3Nc/Meme42.jpg\",\n            \"https://i.postimg.cc/MGzWbkfb/Meme43.jpg\",\n            \"https://i.postimg.cc/fRcz9WyR/Meme44.jpg\",\n            \"https://i.postimg.cc/dVPQ3Zqf/Meme45.jpg\",\n            \"https://i.postimg.cc/L6Z6m3Mf/Meme46.jpg\",\n            \"https://i.postimg.cc/ZRM4SC7V/Meme47.jpg\",\n            \"https://i.postimg.cc/ZqjJwfrk/Meme48.jpg\",\n            \"https://i.postimg.cc/B664kxgj/Meme49.jpg\",\n            \"https://i.postimg.cc/mZyy8CnY/Meme5.jpg\",\n            \"https://i.postimg.cc/gjLdkm1d/Meme50.jpg\",\n            \"https://i.postimg.cc/ZYWyy3SY/Meme51.jpg\",\n            \"https://i.postimg.cc/8s8G7xVv/Meme52.jpg\",\n            \"https://i.postimg.cc/WbrF5vzQ/Meme53.jpg\",\n            \"https://i.postimg.cc/13QgTjN4/Meme54.jpg\",\n            \"https://i.postimg.cc/9MrzZ3sg/Meme55.jpg\",\n            \"https://i.postimg.cc/0Ntbz5XJ/Meme56.jpg\",\n            \"https://i.postimg.cc/4xQKTQzP/Meme57.jpg\",\n            \"https://i.postimg.cc/TP2K2506/Meme58.jpg\",\n            \"https://i.postimg.cc/MTNHYPS6/Meme59.jpg\",\n            \"https://i.postimg.cc/bvnQbtb2/Meme6.jpg\",\n            \"https://i.postimg.cc/5yz0KB4w/Meme60.jpg\",\n            \"https://i.postimg.cc/HW8VLgwV/Meme61.jpg\",\n            \"https://i.postimg.cc/3JMW4c19/Meme62.jpg\",\n            \"https://i.postimg.cc/3JgNgFbh/Meme63.jpg\",\n            \"https://i.postimg.cc/Bn46NPdK/Meme64.jpg\",\n            \"https://i.postimg.cc/VNNNPQss/Meme65.jpg\",\n            \"https://i.postimg.cc/PxprNW8B/Meme66.jpg\",\n            \"https://i.postimg.cc/R0bZMsq7/Meme67.jpg\",\n            \"https://i.postimg.cc/g2s07kWB/Meme68.jpg\",\n            \"https://i.postimg.cc/mDvZ9PYh/Meme69.jpg\",\n            \"https://i.postimg.cc/HsLXzKXm/Meme7.jpg\",\n            \"https://i.postimg.cc/7hSHnq99/Meme70.jpg\",\n            // Nota: Falta la imagen Meme71 en la lista proporcionada.\n            \"https://i.postimg.cc/bYnwhRPn/Meme72.jpg\",\n            \"https://i.postimg.cc/4NTNNh4S/Meme73.jpg\",\n            \"https://i.postimg.cc/BQcZ8QXQ/Meme74.jpg\",\n            \"https://i.postimg.cc/nhFFqbDK/Meme75.jpg\",\n            \"https://i.postimg.cc/L8nk978D/Meme8.jpg\",\n            \"https://i.postimg.cc/bJj1RwHV/Meme9.jpg\"\n            // Asegúrate de incluir todas las URLs de tu lista aquí\n        ];\n        return memeUrls[Math.floor(Math.random() * memeUrls.length)];\n    }\n\n    // Preparar el mensaje con la imagen\n    msg.payload = {\n        chatId: msg.payload.chatId,\n        type: \"photo\",\n        content: selectRandomMeme(),\n        caption: \"Alguien ha dicho meme?\" // Esta es la leyenda de la imagen\n    };\n\n    return msg;\n}\n\n// Si \"meme\" no está en el mensaje, no retornar nada para evitar enviar una respuesta\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 80,
+        "wires": [
+            [
+                "6ad2b5c08c4c1ad8"
+            ]
+        ]
+    },
+    {
+        "id": "b7ef2df6ce4775cb",
+        "type": "function",
+        "z": "d292c460eb15eaa9",
+        "name": "Menu",
+        "func": "var content = \"1.- Hola - Saludo\";\ncontent += \" \\r\\n 2.- Info - Informacion del bot\";\ncontent += \" \\r\\n 3.- Meme - Envia meme al azar\";\ncontent += \" \\r\\n 4.- Tokenemic - Te enviamos infor de tokenomic\";\ncontent += \" \\r\\n 5.- Twitter - Recibes twitter\";\ncontent += \" \\r\\n 6.- Contacto - Recibes el contacto del Director\";\n\n\nmsg.payload = {\n    \"content\": content,\n    \"type\": \"message\",\n    \"chatId\": msg.payload.chatId,\n}\nreturn msg;",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 810,
+        "y": 420,
+        "wires": [
+            [
+                "6ad2b5c08c4c1ad8"
+            ]
+        ]
+    },
+    {
+        "id": "d1b79a39619b7267",
+        "type": "function",
+        "z": "d292c460eb15eaa9",
+        "name": "despedida",
+        "func": "// Convertir el texto del mensaje a minúsculas y verificar si incluye \"hola\"\nif (msg.payload.content.toLowerCase().includes(\"adios\")) {\n    // Preparar un mensaje de respuesta\n    msg.payload = {\n        content: \"¿Como dices? me estas diciendo que te vas?\",\n        type: \"message\",\n        chatId: msg.payload.chatId,\n    };\n    return msg;\n}\n// Si \"hola\" no está en el mensaje, no retornar nada para evitar enviar una respuesta\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 850,
+        "y": 140,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "cb0ff18b19727510",
+        "type": "function",
+        "z": "d292c460eb15eaa9",
+        "name": "twitter",
+        "func": "// Convertir el texto del mensaje a minúsculas y verificar si incluye \"twitter\"\nif (msg.payload.content.toLowerCase().includes(\"twitter\")) {\n    // Preparar un mensaje de respuesta con el enlace a Twitter\n    msg.payload.content = \"Esperad, ¿alguien está preguntando por la cuenta oficial de Twitter de Kanary? Pues os la paso: https://twitter.com/kanarytoken\";\n    msg.payload.type = \"message\";\n    msg.payload.chatId = msg.payload.chatId;\n    return msg;\n}\n// Si \"twitter\" no está en el mensaje, no retornar nada para evitar enviar una respuesta\nreturn null;\n",
+        "outputs": 1,
+        "timeout": 0,
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 830,
+        "y": 200,
+        "wires": [
+            []
+        ]
+    }
+]
