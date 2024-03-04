@@ -1,10 +1,17 @@
 {
-    "name": "node-red-project",
-    "description": "A Node-RED Project",
-    "version": "0.0.1",
-    "private": true,
-    "dependencies": {
-        "node-red-contrib-github-plus": "~0.3.1",
-        "node-red-contrib-telegrambot": "~15.1.9"
-    }
+  "name": "node-red-project",
+  "description": "A Node-RED Project",
+  "version": "0.0.1",
+  "private": true,
+  "dependencies": {
+    "node-red": "^2.2.2", // Asegúrate de incluir Node-RED aquí
+    "node-red-contrib-github-plus": "~0.3.1",
+    "node-red-contrib-telegrambot": "~15.1.9"
+  },
+  "scripts": {
+    "start": "node node_modules/node-red/red.js --settings settings.js"
+  },
+  "engines": {
+    "node": "14.x" // Asegúrate de usar una versión de Node.js soportada por tu versión de Node-RED
+  }
 }
