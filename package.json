@@ -5,7 +5,8 @@
   "private": true,
   "dependencies": {
     "node-red": "^2.2.2",
-    "node-red-contrib-telegrambot": "~0.20.1" // Cambiado a la última versión estable
+    "node-red-contrib-github-plus": "~0.3.1",
+    "node-red-contrib-telegrambot": "~15.1.9"
   },
   "scripts": {
     "start": "node node_modules/node-red/red.js --settings settings.js"
