@@ -331,13 +331,20 @@ class ExcelStore:
         puestos = self.puestos()
         adjudicados = sum(1 for x in puestos if x["adjudicado"])
 
-        # Enriquecer cada puesto asignado con el nombre de pila (sin apellidos) para la
-        # pantalla de proyección. Se busca por nº de candidato; si no, primer token.
-        por_numero = {str(c["numero"]): c["nombre_pila"] for c in self.candidatos()}
+        # Resolver el nombre por el Nº de candidato (del listado definitivo). Así el nombre
+        # aparece SIEMPRE en panel y pantalla aunque la columna "CANDIDATO SELECCIONADO" no
+        # se hubiese escrito/mapeado. Se usa el nº (que sí se guarda) como fuente fiable.
+        por_numero = {str(c["numero"]): c for c in self.candidatos()}
         for x in puestos:
-            if x["asignado_a"]:
-                x["nombre_pila"] = (por_numero.get(str(x["num_candidato"]))
-                                    or x["asignado_a"].split()[0])
+            cand = por_numero.get(str(x["num_candidato"])) if str(x.get("num_candidato") or "") else None
+            if cand:
+                if not x["asignado_a"]:
+                    x["asignado_a"] = cand["nombre"]
+                if not x["dni_asignado"]:
+                    x["dni_asignado"] = cand["dni"]
+                x["nombre_pila"] = cand["nombre_pila"] or (x["asignado_a"].split()[0] if x["asignado_a"] else "")
+            elif x["asignado_a"]:
+                x["nombre_pila"] = x["asignado_a"].split()[0]
             else:
                 x["nombre_pila"] = ""
 
@@ -446,14 +453,30 @@ class ExcelStore:
             txt += f" ({puesto['fecha_inicio']}–{puesto.get('fecha_fin', '')})"
         return txt
 
+    @staticmethod
+    def _col_real(cab, configurada, claves):
+        """Devuelve la columna configurada si existe en la hoja; si no, la autodetecta.
+
+        Evita que un mapeo obsoleto (p.ej. un config.json viejo que apuntaba a otra columna)
+        impida escribir el nombre/estado en el archivo de puestos actual.
+        """
+        if _idx(cab, configurada) is not None:
+            return configurada
+        return _adivina(cab, claves) or configurada
+
     def _escribir_puesto(self, puesto_id, cand, estado):
         p = self.config["puestos"]
-        tiene_col_dni = bool(_idx(self._cab_puestos(), p.get("col_dni_acepta")))
+        cab0 = self._cab_puestos()
+        col_nombre = self._col_real(cab0, p.get("col_nombre_acepta"),
+                                    ["candidato seleccion", "seleccin", "seleccion", "selecc",
+                                     "profesional acepta", "nombre acepta", "asignado", "acepta"])
+        col_estado = self._col_real(cab0, p.get("col_estado"), ["estado"])
+        tiene_col_dni = _idx(cab0, p.get("col_dni_acepta")) is not None
 
         def acc(ws, cab):
             f = int(puesto_id)
-            _escribe(ws, f, cab, p.get("col_nombre_acepta"), cand["nombre"])
-            _escribe(ws, f, cab, p.get("col_estado"), estado)
+            _escribe(ws, f, cab, col_nombre, cand["nombre"])
+            _escribe(ws, f, cab, col_estado, estado)
             _escribe(ws, f, cab, COL_NUM, cand["numero"])
             _escribe(ws, f, cab, COL_HORA, datetime.now().strftime("%H:%M:%S"))
             if tiene_col_dni:

@@ -30,6 +30,8 @@ async function cargar() {
   $("c-pend").textContent = d.resumen.pendientes;
   $("hora").textContent = d.actualizado;
   rellenarCentros();
+  rellenarDias();
+  rellenarEstadoFiltro();
   rellenarEstadosSelect();
   pintar();
 }
@@ -43,6 +45,27 @@ function rellenarCentros() {
   sel.value = actual;
 }
 
+function rellenarDias() {
+  const sel = $("filtro-dias");
+  const actual = sel.value;
+  const dias = [...new Set(ESTADO.puestos.map(p => String(p.duracion || "").trim()).filter(Boolean))]
+    .sort((a, b) => (parseFloat(a) || 0) - (parseFloat(b) || 0));
+  sel.innerHTML = '<option value="">Todos los días</option>' +
+    dias.map(d => `<option value="${esc(d)}">${esc(d)} días</option>`).join("");
+  sel.value = actual;
+}
+
+function rellenarEstadoFiltro() {
+  const sel = $("filtro-estado");
+  const actual = sel.value;
+  const fijas = '<option value="">Todos los estados</option>'
+    + '<option value="__pend">Solo por ofertar</option>'
+    + '<option value="__adj">Solo adjudicados</option>';
+  const estados = (ESTADO.estados || []).map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join("");
+  sel.innerHTML = fijas + estados;
+  sel.value = actual;
+}
+
 function rellenarEstadosSelect() {
   const sel = $("modal-estado");
   if (sel.options.length) return;
@@ -52,11 +75,19 @@ function rellenarEstadosSelect() {
 function filtrados() {
   const txt = $("filtro").value.trim().toLowerCase();
   const centro = $("filtro-centro").value;
+  const dias = $("filtro-dias").value;
   const est = $("filtro-estado").value;
+  const persona = $("filtro-persona").value.trim().toLowerCase();
   return ESTADO.puestos.filter(p => {
     if (centro && p.centro !== centro) return false;
-    if (est === "__pend" && p.adjudicado) return false;
-    if (est === "__adj" && !p.adjudicado) return false;
+    if (dias && String(p.duracion || "").trim() !== dias) return false;
+    if (est === "__pend") { if (p.adjudicado) return false; }
+    else if (est === "__adj") { if (!p.adjudicado) return false; }
+    else if (est && p.estado !== est) return false;
+    if (persona) {
+      const blobP = [p.asignado_a, p.num_candidato, p.dni_asignado].join(" ").toLowerCase();
+      if (!blobP.includes(persona)) return false;
+    }
     if (txt) {
       const blob = [p.centro, p.fecha_inicio, p.fecha_fin, p.duracion, p.turno, p.asignado_a, p.dni_asignado, p.num_candidato, p.estado]
         .join(" ").toLowerCase();
@@ -206,7 +237,7 @@ $("modal-cancelar").onclick = cerrarModal;
 $("modal-aceptar").onclick = aceptarAsignacion;
 $("modal-fondo").addEventListener("click", (e) => { if (e.target === $("modal-fondo")) cerrarModal(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarModal(); });
-["filtro", "filtro-centro", "filtro-estado"].forEach(id => $(id).addEventListener("input", pintar));
+["filtro", "filtro-centro", "filtro-dias", "filtro-estado", "filtro-persona"].forEach(id => $(id).addEventListener("input", pintar));
 
 cargar();
 setInterval(cargar, 5000); // refresco suave por si acaso

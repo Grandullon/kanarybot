@@ -24,13 +24,15 @@
 
   <div class="contenido">
     <div class="controles">
-      <input type="search" id="filtro" placeholder="Buscar puesto (centro, fechas, turno, persona…)" style="flex:1; min-width:240px">
+      <input type="search" id="filtro" placeholder="Buscar puesto (centro, fechas, turno, persona…)" style="flex:1; min-width:220px">
       <select id="filtro-centro"><option value="">Todos los centros</option></select>
+      <select id="filtro-dias"><option value="">Todos los días</option></select>
       <select id="filtro-estado">
-        <option value="">Todos</option>
+        <option value="">Todos los estados</option>
         <option value="__pend">Solo por ofertar</option>
         <option value="__adj">Solo adjudicados</option>
       </select>
+      <input type="search" id="filtro-persona" placeholder="Persona asignada (nombre o nº)" style="min-width:200px">
     </div>
 
     <div class="tabla-envoltura">

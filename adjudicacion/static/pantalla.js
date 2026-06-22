@@ -113,12 +113,10 @@ function tarjetaCentro(c) {
     const p = t.p, total = t.libres + t.dadas;
     const ambTipo = (!unico && (p.ambito || "").trim()) ? p.ambito.trim() : "";
     const det = [ambTipo, rangoMeses(p), turnoTxt(p), (p.necesidad || "").trim()].filter(s => s && s.trim()).map(esc).join(" · ");
-    const urge = (t.libres > 0 && t.libres <= 2) ? `<span class="urgente">¡Últimas ${t.libres}!</span>` : "";
     return `<div class="tipo">
         <div class="lin1">
           <span class="durh">${esc(mesesHumano(p))}</span>
           <span class="cuenta">Quedan <b>${t.libres}</b> de ${total}</span>
-          ${urge}
         </div>
         ${det ? `<div class="det">${det}</div>` : ""}
         <div class="barra-tipo"><span class="seg libre" style="flex:${t.libres}"></span><span class="seg dada" style="flex:${t.dadas}"></span></div>
