@@ -86,6 +86,43 @@ def _valor(fila, idx):
     return v.strip() if isinstance(v, str) else str(v)
 
 
+def _dias_entre(fini, ffin):
+    """Días inclusivos entre dos fechas dd/mm/aaaa; '' si no se pueden parsear.
+
+    Red de seguridad para cuando la columna DURACIÓN es una fórmula y su valor cacheado se
+    perdió al guardar. Coincide con la convención del archivo (01/07→30/09 = 92).
+    """
+    try:
+        a = datetime.strptime(fini, "%d/%m/%Y")
+        b = datetime.strptime(ffin, "%d/%m/%Y")
+        return str((b - a).days + 1)
+    except (ValueError, TypeError):
+        return ""
+
+
+def _congelar_formulas(ws, ruta, hoja):
+    """Sustituye las fórmulas de la hoja por su valor cacheado antes de guardar.
+
+    openpyxl descarta el valor cacheado de las fórmulas al guardar, de modo que una relectura
+    con data_only=True las devolvería vacías (p.ej. la columna DURACIÓN). Volcando el valor
+    cacheado como literal, los datos derivados siguen visibles tras asignar.
+    """
+    try:
+        wbv = load_workbook(ruta, data_only=True)
+    except Exception:
+        return
+    try:
+        wsv = wbv[hoja]
+        for fila in ws.iter_rows():
+            for celda in fila:
+                if celda.data_type == "f":
+                    cache = wsv[celda.coordinate].value
+                    if cache is not None:
+                        celda.value = cache
+    finally:
+        wbv.close()
+
+
 def _cabeceras(ws):
     for fila in ws.iter_rows(min_row=1, max_row=1, values_only=True):
         return [c if c is not None else "" for c in fila]
@@ -298,14 +335,16 @@ class ExcelStore:
             for nfila, fila in _filas_datos(ws):
                 estado = _valor(fila, i["est"]) or ESTADO_INICIAL
                 asignado = _valor(fila, i["nom"])
+                fini = _valor(fila, i["fini"])
+                ffin = _valor(fila, i["ffin"])
                 lista.append({
                     "id": nfila,
                     "centro": _valor(fila, i["centro"]),
                     "ambito": _valor(fila, i["ambito"]),
                     "necesidad": _valor(fila, i["necesidad"]),
-                    "fecha_inicio": _valor(fila, i["fini"]),
-                    "fecha_fin": _valor(fila, i["ffin"]),
-                    "duracion": _valor(fila, i["dur"]),
+                    "fecha_inicio": fini,
+                    "fecha_fin": ffin,
+                    "duracion": _valor(fila, i["dur"]) or _dias_entre(fini, ffin),
                     "turno": _valor(fila, i["turno"]),
                     "asignado_a": asignado,
                     "dni_asignado": _valor(fila, i["dni"]) or _valor(fila, i["dniaux"]),
@@ -489,7 +528,7 @@ class ExcelStore:
     def _editar_puesto(self, puesto_id, accion):
         p = self.config["puestos"]
         return self._editar(p["ruta"], p["hoja"], accion,
-                            extra_cols=(COL_NUM, COL_DNI_AUX, COL_HORA))
+                            extra_cols=(COL_NUM, COL_DNI_AUX, COL_HORA), congelar=True)
 
     def _marcar_candidato(self, cand, estado, aceptada, datos):
         c = self.config["candidatos"]
@@ -534,17 +573,21 @@ class ExcelStore:
 
     # ----------------------- Edición segura de un Excel --------------- #
 
-    def _editar(self, ruta, hoja, accion, extra_cols=()):
+    def _editar(self, ruta, hoja, accion, extra_cols=(), congelar=False):
         """Abre el Excel, aplica `accion(ws, cabeceras)` y guarda de forma segura.
 
         Conserva fórmulas y formato (no usa data_only). Crea las columnas auxiliares que
         falten. Hace copia de seguridad y guardado atómico. Si el archivo está abierto en
-        otro programa, deja `ultimo_error` y devuelve False (sin perder datos).
+        otro programa, deja `ultimo_error` y devuelve False (sin perder datos). Con
+        `congelar=True` vuelca el valor cacheado de las fórmulas como literal para que no se
+        pierdan datos derivados (p.ej. DURACIÓN) al releer tras guardar.
         """
         self._backup(ruta)
         wb = load_workbook(ruta)
         try:
             ws = wb[hoja]
+            if congelar:
+                _congelar_formulas(ws, ruta, hoja)
             cab = list(_cabeceras(ws))
             for col in extra_cols:
                 if _idx(cab, col) is None:

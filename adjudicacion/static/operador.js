@@ -30,10 +30,29 @@ async function cargar() {
   $("c-pend").textContent = d.resumen.pendientes;
   $("hora").textContent = d.actualizado;
   rellenarCentros();
+  rellenarFechas();
   rellenarDias();
   rellenarEstadoFiltro();
   rellenarEstadosSelect();
   pintar();
+}
+
+function _claveFecha(s) {
+  const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(String(s || "").trim());
+  return m ? `${m[3]}${m[2]}${m[1]}` : "";   // aaaammdd para ordenar
+}
+
+function rellenarFechas() {
+  for (const [id, campo, vacio] of [["filtro-fini", "fecha_inicio", "Cualquier inicio"],
+                                    ["filtro-ffin", "fecha_fin", "Cualquier fin"]]) {
+    const sel = $(id);
+    const actual = sel.value;
+    const vals = [...new Set(ESTADO.puestos.map(p => (p[campo] || "").trim()).filter(Boolean))]
+      .sort((a, b) => _claveFecha(a).localeCompare(_claveFecha(b)));
+    sel.innerHTML = `<option value="">${vacio}</option>` +
+      vals.map(v => `<option>${esc(v)}</option>`).join("");
+    sel.value = actual;
+  }
 }
 
 function rellenarCentros() {
@@ -75,11 +94,15 @@ function rellenarEstadosSelect() {
 function filtrados() {
   const txt = $("filtro").value.trim().toLowerCase();
   const centro = $("filtro-centro").value;
+  const fini = $("filtro-fini").value;
+  const ffin = $("filtro-ffin").value;
   const dias = $("filtro-dias").value;
   const est = $("filtro-estado").value;
   const persona = $("filtro-persona").value.trim().toLowerCase();
   return ESTADO.puestos.filter(p => {
     if (centro && p.centro !== centro) return false;
+    if (fini && (p.fecha_inicio || "").trim() !== fini) return false;
+    if (ffin && (p.fecha_fin || "").trim() !== ffin) return false;
     if (dias && String(p.duracion || "").trim() !== dias) return false;
     if (est === "__pend") { if (p.adjudicado) return false; }
     else if (est === "__adj") { if (!p.adjudicado) return false; }
@@ -237,7 +260,7 @@ $("modal-cancelar").onclick = cerrarModal;
 $("modal-aceptar").onclick = aceptarAsignacion;
 $("modal-fondo").addEventListener("click", (e) => { if (e.target === $("modal-fondo")) cerrarModal(); });
 document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarModal(); });
-["filtro", "filtro-centro", "filtro-dias", "filtro-estado", "filtro-persona"].forEach(id => $(id).addEventListener("input", pintar));
+["filtro", "filtro-centro", "filtro-fini", "filtro-ffin", "filtro-dias", "filtro-estado", "filtro-persona"].forEach(id => $(id).addEventListener("input", pintar));
 
 cargar();
 setInterval(cargar, 5000); // refresco suave por si acaso
