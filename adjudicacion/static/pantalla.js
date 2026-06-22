@@ -42,6 +42,19 @@ function turnoIcon(t) {
   if (/diurn|mañana|manana|dia|día/.test(n)) return "☀️";
   return "";
 }
+// Fechas completas: "01/07/2026 – 30/08/2026" (o la que haya).
+function fechasFull(p) {
+  const a = (p.fecha_inicio || "").trim(), b = (p.fecha_fin || "").trim();
+  if (a && b) return `${a} – ${b}`;
+  return a || b || "";
+}
+// Turno con icono: "☀️ Diurno" (o "").
+function turnoTxt(p) {
+  const t = (p.turno || "").trim();
+  if (!t) return "";
+  const ic = turnoIcon(t);
+  return ic ? `${ic} ${t}` : t;
+}
 
 let vistos = null;       // ids de adjudicados ya mostrados (resaltar nuevos)
 let ultimoId = null;     // id del último cogido (para destello del banner)
@@ -119,8 +132,15 @@ function tarjetaCentro(c) {
 }
 
 // ===================== "LO COGIDO" =====================
-function contratoTxt(p) {
-  return [p.centro, mesesHumano(p), rangoMeses(p)].filter(Boolean).map(esc).join(" · ");
+// Rejilla de campos etiquetados (Centro / Duración / Fechas / Turno); omite los vacíos.
+function camposContrato(p) {
+  const filas = [
+    ["Centro", `<span class="valor centro">${esc(p.centro || "—")}</span>`],
+    mesesHumano(p) && ["Duración", `<span class="valor">${esc(mesesHumano(p))}</span>`],
+    fechasFull(p) && ["Fechas", `<span class="valor">${esc(fechasFull(p))}</span>`],
+    turnoTxt(p) && ["Turno", `<span class="valor">${esc(turnoTxt(p))}</span>`],
+  ].filter(Boolean);
+  return `<div class="campos">${filas.map(([r, v]) => `<span class="rotulo">${r}</span>${v}`).join("")}</div>`;
 }
 
 function pintarCogido(lista) {
@@ -144,6 +164,7 @@ function pintarCogido(lista) {
 
   // ----- Banner del último (siempre visible, fuera del scroll) -----
   if (ultimo.id !== ultimoId) {
+    const heroLinea = [ultimo.centro, mesesHumano(ultimo), turnoTxt(ultimo)].filter(Boolean).map(esc).join(" · ");
     $("ultimo").innerHTML = `
       <div class="hero destacar">
         <div class="hero-tag">Último contrato cogido · ${esc(hhmm(ultimo.hora))}</div>
@@ -151,7 +172,8 @@ function pintarCogido(lista) {
           <span class="hero-nc">Nº${esc(ultimo.num_candidato)}</span>
           <span class="hero-nom">${esc(ultimo.nombre_pila || ultimo.asignado_a)}</span>
         </div>
-        <div class="hero-contr">${contratoTxt(ultimo)}</div>
+        <div class="hero-contr">${heroLinea}</div>
+        ${fechasFull(ultimo) ? `<div class="hero-fechas">${esc(fechasFull(ultimo))}</div>` : ""}
       </div>`;
     ultimoId = ultimo.id;
   }
@@ -172,13 +194,13 @@ function pintarCogido(lista) {
     $("adjudicados").innerHTML = desc.map(p => {
       const nuevo = !primera && !vistos.has(p.id);
       return `<div class="item ${nuevo ? "nuevo" : ""}">
-          <span class="seq">#${p._seq}</span>
-          <span class="hora">${esc(hhmm(p.hora))}</span>
-          <span class="nc">Nº${esc(p.num_candidato)}</span>
-          <span class="quien">
+          <div class="item-top">
+            <span class="seq">#${p._seq}</span>
+            <span class="nc">Nº${esc(p.num_candidato)}</span>
             <span class="nom">${esc(p.nombre_pila || p.asignado_a)}</span>
-            <span class="contr">${contratoTxt(p)}</span>
-          </span>
+            <span class="hora">${esc(hhmm(p.hora))}</span>
+          </div>
+          ${camposContrato(p)}
         </div>`;
     }).join("");
     sigFeed = sig;
