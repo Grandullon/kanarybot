@@ -1,0 +1,11 @@
+# Entorno virtual e instalación
+.venv/
+__pycache__/
+*.pyc
+
+# Configuración local y copias de seguridad (contienen rutas/datos del acto)
+config.json
+backups/
+
+# Excel de trabajo (datos reales y de prueba)
+*.xlsx

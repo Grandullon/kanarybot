@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adjudicación · Pantalla</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    body { background: #0f2138; color: #fff; }
+    header.barra { background: #0b1a2c; font-size: 1.2em; }
+    header.barra h1 { font-size: 26px; }
+    .contador { background: #16304f; border-color: #244a73; color: #fff; min-width: 150px; }
+    .contador .num { font-size: 44px; }
+    .contador .etq { color: #9fc3e8; font-size: 14px; }
+    .contador.ok .num { color: #7ee08a; }
+    .contador.pend .num { color: #ffd27d; }
+    .panel-pantalla { padding: 18px 26px; }
+    table { background: transparent; }
+    th { background: #16304f; color: #9fc3e8; font-size: 18px; border-color: #244a73; }
+    td { color: #eaf2fb; font-size: 20px; border-color: #1d3a5c; }
+    tr.asignado { background: #14422a; }
+    tr.asignado td b { color: #aef5b6; }
+    .grupo-centro { margin-top: 22px; }
+    .grupo-centro h2 { font-size: 22px; color: #9fc3e8; border-bottom: 2px solid #244a73; padding-bottom: 6px; }
+    .pill { font-size: 15px; }
+    .reloj { font-size: 16px; color: #9fc3e8; }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <h1>Puestos ofertados</h1>
+    <div class="contadores">
+      <div class="contador"><div class="num" id="c-total">0</div><div class="etq">Ofertados</div></div>
+      <div class="contador ok"><div class="num" id="c-asig">0</div><div class="etq">Asignados</div></div>
+      <div class="contador pend"><div class="num" id="c-pend">0</div><div class="etq">Pendientes</div></div>
+    </div>
+    <div class="relleno"></div>
+    <span class="reloj">Actualizado: <span id="hora">—</span></span>
+  </header>
+
+  <div class="panel-pantalla" id="contenedor"></div>
+
+  <script src="{{ url_for('static', filename='pantalla.js') }}"></script>
+</body>
+</html>

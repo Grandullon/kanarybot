@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adjudicación · Configuración</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .tarjeta { background:#fff; border:1px solid var(--borde); border-radius:10px; padding:18px; margin:0 auto 18px; max-width:880px; }
+    .tarjeta h2 { margin-top:0; color:var(--azul); }
+    .rejilla { display:grid; grid-template-columns:1fr 1fr; gap:10px 18px; }
+    .rejilla .campo { display:flex; flex-direction:column; }
+    .rejilla label { font-size:13px; color:var(--gris); margin-bottom:3px; }
+    .fila-ruta { display:flex; gap:8px; align-items:end; margin-bottom:12px; }
+    .fila-ruta .campo { flex:1; }
+    .ok-msg { color:var(--verde); font-weight:600; }
+    .err-msg { color:var(--rojo); font-weight:600; }
+    .ancho { max-width:880px; margin:0 auto; }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <h1>Configuración del acto</h1>
+    <div class="relleno"></div>
+    <a href="/">← Volver al panel</a>
+  </header>
+
+  <div class="contenido">
+    <div class="ancho">
+      <p class="mini">Indica la ruta de cada Excel y pulsa <b>Detectar</b>. Revisa que las columnas
+      detectadas son correctas y pulsa <b>Guardar y comprobar</b> al final.</p>
+    </div>
+
+    <!-- CANDIDATOS -->
+    <div class="tarjeta">
+      <h2>1 · Listado de candidatos (solo lectura)</h2>
+      <div class="fila-ruta">
+        <div class="campo">
+          <label>Ruta del archivo Excel de candidatos</label>
+          <input id="cand-ruta" placeholder="C:\\acto\\listado-definitivo.xlsx">
+        </div>
+        <button class="sec" onclick="detectar('cand')">Detectar</button>
+      </div>
+      <div class="campo" style="margin-bottom:12px">
+        <label>Hoja</label>
+        <select id="cand-hoja" onchange="detectar('cand', true)"></select>
+      </div>
+      <div class="rejilla">
+        <div class="campo"><label>Columna Nombre</label><select id="cand-col_nombre"></select></div>
+        <div class="campo"><label>Columna Apellidos</label><select id="cand-col_apellidos"></select></div>
+        <div class="campo"><label>Columna DNI</label><select id="cand-col_dni"></select></div>
+        <div class="campo"><label>Columna Letra DNI</label><select id="cand-col_letra"></select></div>
+        <div class="campo"><label>Columna Teléfono</label><select id="cand-col_telefono"></select></div>
+        <div class="campo"><label>Columna Puntos (mostrar)</label><select id="cand-col_puntos"></select></div>
+      </div>
+      <p class="mini">El <b>Nº de candidato</b> es su posición en este listado (1, 2, 3…), que es lo que se canta en el acto.</p>
+    </div>
+
+    <!-- PUESTOS -->
+    <div class="tarjeta">
+      <h2>2 · Listado de puestos a ofertar (se actualiza)</h2>
+      <div class="fila-ruta">
+        <div class="campo">
+          <label>Ruta del archivo Excel de puestos</label>
+          <input id="pue-ruta" placeholder="C:\\acto\\puestos.xlsx">
+        </div>
+        <button class="sec" onclick="detectar('pue')">Detectar</button>
+      </div>
+      <div class="campo" style="margin-bottom:12px">
+        <label>Hoja</label>
+        <select id="pue-hoja" onchange="detectar('pue', true)"></select>
+      </div>
+      <div class="rejilla">
+        <div class="campo"><label>Columna Centro</label><select id="pue-col_centro"></select></div>
+        <div class="campo"><label>Columna Duración</label><select id="pue-col_duracion"></select></div>
+        <div class="campo"><label>Columna Turno</label><select id="pue-col_turno"></select></div>
+        <div class="campo"><label>Columna Descripción (opcional)</label><select id="pue-col_descripcion"></select></div>
+        <div class="campo"><label>Columna «nombre profesional acepta»</label><select id="pue-col_nombre_acepta"></select></div>
+        <div class="campo"><label>Columna «dni profesional acepta»</label><select id="pue-col_dni_acepta"></select></div>
+        <div class="campo"><label>Columna Estado</label><select id="pue-col_estado"></select></div>
+      </div>
+      <p class="mini">Al asignar se escribe el nombre y el DNI del candidato en estas columnas. Si falta
+      «nombre/dni acepta» o «estado», se crearán automáticamente.</p>
+    </div>
+
+    <div class="ancho" style="display:flex; gap:12px; align-items:center">
+      <button onclick="guardar()">Guardar y comprobar</button>
+      <span id="resultado"></span>
+    </div>
+  </div>
+
+  <script>
+    const CFG = {{ cfg|tojson }};
+    const $ = (id) => document.getElementById(id);
+    const CAMPOS_CAND = ["col_nombre","col_apellidos","col_dni","col_letra","col_telefono","col_puntos"];
+    const CAMPOS_PUE  = ["col_centro","col_duracion","col_turno","col_descripcion","col_nombre_acepta","col_dni_acepta","col_estado"];
+
+    function opciones(cabeceras, sel) {
+      const actual = sel.value;
+      sel.innerHTML = '<option value="">— (ninguna) —</option>' +
+        cabeceras.map(c => `<option value="${c.replace(/"/g,'&quot;')}">${c}</option>`).join("");
+      if (actual) sel.value = actual;
+    }
+
+    async function post(url, body) {
+      const r = await fetch(url, { method:"POST", headers:{"Content-Type":"application/json"}, body: JSON.stringify(body) });
+      return r.json();
+    }
+
+    async function detectar(pref, soloMapa) {
+      const ruta = $(pref + "-ruta").value.trim().replace(/^"|"$/g, "");
+      if (!ruta) return;
+      const res = $("resultado"); res.textContent = "Detectando…"; res.className = "mini";
+      const tipo = pref === "cand" ? "candidatos" : "puestos";
+      const campos = pref === "cand" ? CAMPOS_CAND : CAMPOS_PUE;
+
+      // Si no es solo recálculo de mapa, primero recuperamos hojas.
+      if (!soloMapa) {
+        const info = await post("/api/inspeccionar", { ruta });
+        if (!info.ok) { res.textContent = info.error; res.className = "err-msg"; return; }
+        const selHoja = $(pref + "-hoja");
+        selHoja.innerHTML = info.info.hojas.map(h => `<option>${h}</option>`).join("");
+      }
+      const hoja = $(pref + "-hoja").value || null;
+      const d = await post("/api/autodetectar", { ruta, hoja, tipo });
+      if (!d.ok) { res.textContent = d.error; res.className = "err-msg"; return; }
+      const cab = d.mapa.cabeceras || [];
+      campos.forEach(c => { const s = $(pref + "-" + c); if (s) { opciones(cab, s); if (d.mapa[c]) s.value = d.mapa[c]; } });
+      res.textContent = "Columnas detectadas. Revísalas.";
+      res.className = "ok-msg";
+    }
+
+    async function guardar() {
+      const cfg = {
+        candidatos: { ruta: $("cand-ruta").value.trim().replace(/^"|"$/g,''), hoja: $("cand-hoja").value },
+        puestos:    { ruta: $("pue-ruta").value.trim().replace(/^"|"$/g,''),  hoja: $("pue-hoja").value },
+      };
+      CAMPOS_CAND.forEach(c => cfg.candidatos[c] = $("cand-" + c).value);
+      CAMPOS_PUE.forEach(c => cfg.puestos[c] = $("pue-" + c).value);
+      const res = $("resultado"); res.textContent = "Comprobando…"; res.className = "mini";
+      const d = await post("/api/guardar_config", cfg);
+      if (!d.ok) { res.textContent = d.error; res.className = "err-msg"; return; }
+      res.innerHTML = `✓ Guardado. ${d.candidatos} candidatos y ${d.puestos} puestos leídos. <a href="/">Ir al panel →</a>`;
+      res.className = "ok-msg";
+    }
+
+    // Precarga si ya había configuración guardada.
+    window.addEventListener("DOMContentLoaded", async () => {
+      if (CFG.candidatos && CFG.candidatos.ruta) {
+        $("cand-ruta").value = CFG.candidatos.ruta;
+        await detectar("cand");
+        $("cand-hoja").value = CFG.candidatos.hoja || $("cand-hoja").value;
+        CAMPOS_CAND.forEach(c => { if (CFG.candidatos[c]) $("cand-"+c).value = CFG.candidatos[c]; });
+      }
+      if (CFG.puestos && CFG.puestos.ruta) {
+        $("pue-ruta").value = CFG.puestos.ruta;
+        await detectar("pue");
+        $("pue-hoja").value = CFG.puestos.hoja || $("pue-hoja").value;
+        CAMPOS_PUE.forEach(c => { if (CFG.puestos[c]) $("pue-"+c).value = CFG.puestos[c]; });
+      }
+    });
+  </script>
+</body>
+</html>

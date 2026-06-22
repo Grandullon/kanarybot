@@ -1,0 +1,105 @@
+:root {
+  --azul: #1f4e79;
+  --azul-claro: #2e75b6;
+  --verde: #2e7d32;
+  --verde-fondo: #e8f5e9;
+  --rojo: #c62828;
+  --ambar: #ef6c00;
+  --gris: #5f6368;
+  --gris-fondo: #f1f3f4;
+  --borde: #d6d9dc;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: "Segoe UI", Roboto, Arial, sans-serif;
+  margin: 0;
+  color: #202124;
+  background: #fafafa;
+}
+
+header.barra {
+  background: var(--azul);
+  color: #fff;
+  padding: 10px 18px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+}
+header.barra h1 { font-size: 18px; margin: 0; font-weight: 600; }
+header.barra a { color: #cfe2ff; text-decoration: none; font-size: 14px; }
+header.barra a:hover { text-decoration: underline; }
+.barra .relleno { flex: 1; }
+
+/* Contadores */
+.contadores { display: flex; gap: 12px; flex-wrap: wrap; }
+.contador {
+  background: #fff; border: 1px solid var(--borde); border-radius: 8px;
+  padding: 8px 14px; text-align: center; min-width: 96px;
+}
+.contador .num { font-size: 26px; font-weight: 700; line-height: 1; }
+.contador .etq { font-size: 12px; color: var(--gris); text-transform: uppercase; }
+.contador.ok .num { color: var(--verde); }
+.contador.pend .num { color: var(--ambar); }
+
+.contenido { padding: 16px; }
+
+/* Controles / filtros */
+.controles {
+  display: flex; gap: 10px; flex-wrap: wrap; align-items: center;
+  margin-bottom: 12px;
+}
+input, select, button {
+  font-size: 15px; padding: 8px 10px; border: 1px solid var(--borde);
+  border-radius: 6px; background: #fff;
+}
+input:focus, select:focus { outline: 2px solid var(--azul-claro); border-color: var(--azul-claro); }
+button { cursor: pointer; background: var(--azul-claro); color: #fff; border: none; font-weight: 600; }
+button:hover { background: var(--azul); }
+button.sec { background: #fff; color: var(--azul); border: 1px solid var(--azul-claro); }
+button.peligro { background: #fff; color: var(--rojo); border: 1px solid var(--rojo); }
+button:disabled { opacity: .5; cursor: default; }
+
+/* Tabla */
+table { border-collapse: collapse; width: 100%; background: #fff; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--borde); text-align: left; font-size: 14px; }
+th { background: var(--gris-fondo); position: sticky; top: 0; font-size: 13px; color: var(--gris); }
+tr.asignado { background: var(--verde-fondo); }
+.tabla-envoltura { max-height: calc(100vh - 230px); overflow: auto; border: 1px solid var(--borde); border-radius: 8px; }
+
+/* Etiquetas de estado */
+.pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.pill.Aceptado { background: #e8f5e9; color: var(--verde); }
+.pill.Contactado { background: #e3f2fd; color: var(--azul-claro); }
+.pill.Pendiente { background: #f1f3f4; color: var(--gris); }
+.pill.No.contesta, .pill[data-e="No contesta"] { background: #fff3e0; color: var(--ambar); }
+.pill[data-e="Renuncia"] { background: #ffebee; color: var(--rojo); }
+
+/* Modal */
+.fondo-modal {
+  position: fixed; inset: 0; background: rgba(0,0,0,.45);
+  display: none; align-items: center; justify-content: center; z-index: 50;
+}
+.fondo-modal.visible { display: flex; }
+.modal {
+  background: #fff; border-radius: 10px; padding: 20px; width: 460px; max-width: 94vw;
+  box-shadow: 0 10px 40px rgba(0,0,0,.3);
+}
+.modal h2 { margin: 0 0 12px; font-size: 18px; }
+.modal .campo { margin-bottom: 12px; }
+.modal label { display: block; font-size: 13px; color: var(--gris); margin-bottom: 4px; }
+.modal .acciones { display: flex; gap: 10px; justify-content: flex-end; margin-top: 16px; }
+
+/* Sugerencias de candidato */
+.sugerencias { border: 1px solid var(--borde); border-radius: 6px; margin-top: 4px; max-height: 220px; overflow: auto; }
+.sugerencia { padding: 8px 10px; cursor: pointer; border-bottom: 1px solid var(--gris-fondo); }
+.sugerencia:hover, .sugerencia.activa { background: #e3f2fd; }
+.sugerencia .n { font-weight: 700; color: var(--azul); margin-right: 8px; }
+.sugerencia .pts { float: right; color: var(--gris); font-size: 12px; }
+
+.aviso { background: #fff3e0; color: var(--ambar); padding: 10px 14px; border-radius: 6px; margin: 0 16px 12px; display: none; }
+.aviso.visible { display: block; }
+
+.mini { font-size: 12px; color: var(--gris); }

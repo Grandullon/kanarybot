@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Adjudicación · Panel del operador</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="barra">
+    <h1>Acto de adjudicación · Panel</h1>
+    <div class="contadores">
+      <div class="contador"><div class="num" id="c-total">0</div><div class="etq">Ofertados</div></div>
+      <div class="contador ok"><div class="num" id="c-asig">0</div><div class="etq">Asignados</div></div>
+      <div class="contador pend"><div class="num" id="c-pend">0</div><div class="etq">Pendientes</div></div>
+    </div>
+    <div class="relleno"></div>
+    <a href="/pantalla" target="_blank">🖥️ Abrir pantalla de proyección</a>
+    <a href="/config">⚙️ Configuración</a>
+    <span class="mini">Actualizado: <span id="hora">—</span></span>
+  </header>
+
+  <div class="aviso" id="aviso"></div>
+
+  <div class="contenido">
+    <div class="controles">
+      <input type="search" id="filtro" placeholder="Buscar puesto (centro, duración, turno, persona…)" style="flex:1; min-width:240px">
+      <select id="filtro-centro"><option value="">Todos los centros</option></select>
+      <select id="filtro-estado">
+        <option value="">Todos los estados</option>
+        <option value="__pend">Solo pendientes</option>
+        <option value="__asig">Solo asignados</option>
+      </select>
+    </div>
+
+    <div class="tabla-envoltura">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:60px">#</th>
+            <th>Centro</th>
+            <th>Duración</th>
+            <th>Turno</th>
+            <th>Persona asignada</th>
+            <th>Estado</th>
+            <th style="width:230px">Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Modal de asignación -->
+  <div class="fondo-modal" id="modal-fondo">
+    <div class="modal">
+      <h2 id="modal-titulo">Asignar puesto</h2>
+      <div class="campo">
+        <label>Candidato (escribe nº, nombre o DNI)</label>
+        <input type="search" id="busca-cand" placeholder="Ej.: 173  ·  Marisa  ·  52516294A" autocomplete="off">
+        <div class="sugerencias" id="sugerencias" style="display:none"></div>
+      </div>
+      <div class="campo">
+        <label>Estado</label>
+        <select id="modal-estado"></select>
+      </div>
+      <div class="acciones">
+        <button class="sec" id="modal-cancelar">Cancelar</button>
+        <button id="modal-aceptar" disabled>Asignar</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='operador.js') }}"></script>
+</body>
+</html>
