@@ -86,8 +86,9 @@ function pintarTablon(puestos) {
   const centros = {};
   puestos.forEach(p => {
     const k = claveCentro(p.centro);
-    const c = centros[k] || (centros[k] = { nombre: (p.centro || "(Sin centro)").trim(), tipos: {}, quedan: 0, total: 0 });
-    const tk = `${p.duracion}|${p.fecha_inicio}|${p.fecha_fin}|${p.turno}`;
+    const c = centros[k] || (centros[k] = { nombre: (p.centro || "(Sin centro)").trim(), ambitos: new Set(), tipos: {}, quedan: 0, total: 0 });
+    if ((p.ambito || "").trim()) c.ambitos.add(p.ambito.trim());
+    const tk = `${p.duracion}|${p.fecha_inicio}|${p.fecha_fin}|${p.turno}|${p.ambito}`;
     const t = c.tipos[tk] || (c.tipos[tk] = { p, libres: 0, dadas: 0 });
     c.total++;
     if (p.adjudicado) { t.dadas++; } else { t.libres++; c.quedan++; }
@@ -106,10 +107,12 @@ function pintarTablon(puestos) {
 }
 
 function tarjetaCentro(c) {
+  const ambitos = [...(c.ambitos || [])];
+  const unico = ambitos.length === 1 ? ambitos[0] : "";   // un solo ámbito → subtítulo
   const tipos = Object.values(c.tipos).map(t => {
     const p = t.p, total = t.libres + t.dadas;
-    const libPct = total ? (t.libres / total * 100) : 0;
-    const det = [rangoMeses(p), (turnoIcon(p.turno) + " " + (p.turno || "")).trim()].filter(s => s && s.trim()).map(esc).join(" · ");
+    const ambTipo = (!unico && (p.ambito || "").trim()) ? p.ambito.trim() : "";
+    const det = [ambTipo, rangoMeses(p), turnoTxt(p), (p.necesidad || "").trim()].filter(s => s && s.trim()).map(esc).join(" · ");
     const urge = (t.libres > 0 && t.libres <= 2) ? `<span class="urgente">¡Últimas ${t.libres}!</span>` : "";
     return `<div class="tipo">
         <div class="lin1">
@@ -125,8 +128,9 @@ function tarjetaCentro(c) {
   const badge = c.quedan > 0
     ? `<span class="quedan-grande ${urgenteCentro}">Quedan <b>${c.quedan}</b></span>`
     : `<span class="quedan-grande cero">Completo</span>`;
+  const sub = unico ? `<div class="amb">${esc(unico)}</div>` : "";
   return `<div class="centro ${c.quedan === 0 ? "agotado" : ""}">
-      <div class="cabc"><span class="nomc">${esc(c.nombre)}</span>${badge}</div>
+      <div class="cabc"><div><span class="nomc">${esc(c.nombre)}</span>${sub}</div>${badge}</div>
       ${tipos}
     </div>`;
 }
@@ -136,9 +140,11 @@ function tarjetaCentro(c) {
 function camposContrato(p) {
   const filas = [
     ["Centro", `<span class="valor centro">${esc(p.centro || "—")}</span>`],
+    (p.ambito || "").trim() && ["Ámbito", `<span class="valor">${esc(p.ambito)}</span>`],
     mesesHumano(p) && ["Duración", `<span class="valor">${esc(mesesHumano(p))}</span>`],
     fechasFull(p) && ["Fechas", `<span class="valor">${esc(fechasFull(p))}</span>`],
     turnoTxt(p) && ["Turno", `<span class="valor">${esc(turnoTxt(p))}</span>`],
+    (p.necesidad || "").trim() && ["Necesidad", `<span class="valor">${esc(p.necesidad)}</span>`],
   ].filter(Boolean);
   return `<div class="campos">${filas.map(([r, v]) => `<span class="rotulo">${r}</span>${v}`).join("")}</div>`;
 }

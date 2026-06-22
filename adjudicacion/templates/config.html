@@ -77,6 +77,8 @@
       </div>
       <div class="rejilla">
         <div class="campo"><label>Columna Centro</label><select id="pue-col_centro"></select></div>
+        <div class="campo"><label>Columna Ámbito (opcional)</label><select id="pue-col_ambito"></select></div>
+        <div class="campo"><label>Columna Necesidad (opcional)</label><select id="pue-col_necesidad"></select></div>
         <div class="campo"><label>Columna Fecha inicio</label><select id="pue-col_fecha_inicio"></select></div>
         <div class="campo"><label>Columna Fecha fin</label><select id="pue-col_fecha_fin"></select></div>
         <div class="campo"><label>Columna Duración</label><select id="pue-col_duracion"></select></div>
@@ -100,7 +102,7 @@
     const CFG = {{ cfg|tojson }};
     const $ = (id) => document.getElementById(id);
     const CAMPOS_CAND = ["col_nombre","col_apellidos","col_dni","col_letra","col_telefono","col_puntos","col_oferta_estado","col_oferta_aceptada","col_oferta_datos"];
-    const CAMPOS_PUE  = ["col_centro","col_fecha_inicio","col_fecha_fin","col_duracion","col_turno","col_nombre_acepta","col_dni_acepta","col_estado","col_anotacion"];
+    const CAMPOS_PUE  = ["col_centro","col_ambito","col_necesidad","col_fecha_inicio","col_fecha_fin","col_duracion","col_turno","col_nombre_acepta","col_dni_acepta","col_estado","col_anotacion"];
 
     function opciones(cabeceras, sel) {
       const actual = sel.value;

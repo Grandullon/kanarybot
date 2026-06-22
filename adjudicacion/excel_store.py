@@ -176,6 +176,8 @@ class ExcelStore:
         return {
             "ruta": ruta, "hoja": hoja,
             "col_centro": _adivina(cab, ["centro", "hospital", "distrito", "destino"]) or "",
+            "col_ambito": _adivina(cab, ["ambito", "tipo centro"]) or "",
+            "col_necesidad": _adivina(cab, ["necesidad", "motivo", "causa"]) or "",
             "col_fecha_inicio": _adivina(cab, ["fecha inicio", "inicio", "alta"]) or "",
             "col_fecha_fin": _adivina(cab, ["fecha fin", "fin", "hasta"]) or "",
             "col_duracion": _adivina(cab, ["duracion", "dias", "meses", "tiempo", "periodo"]) or "",
@@ -278,6 +280,8 @@ class ExcelStore:
             cab = _cabeceras(ws)
             i = {
                 "centro": _idx(cab, p.get("col_centro")),
+                "ambito": _idx(cab, p.get("col_ambito")),
+                "necesidad": _idx(cab, p.get("col_necesidad")),
                 "fini": _idx(cab, p.get("col_fecha_inicio")),
                 "ffin": _idx(cab, p.get("col_fecha_fin")),
                 "dur": _idx(cab, p.get("col_duracion")),
@@ -297,6 +301,8 @@ class ExcelStore:
                 lista.append({
                     "id": nfila,
                     "centro": _valor(fila, i["centro"]),
+                    "ambito": _valor(fila, i["ambito"]),
+                    "necesidad": _valor(fila, i["necesidad"]),
                     "fecha_inicio": _valor(fila, i["fini"]),
                     "fecha_fin": _valor(fila, i["ffin"]),
                     "duracion": _valor(fila, i["dur"]),
