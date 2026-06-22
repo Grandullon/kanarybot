@@ -13,60 +13,77 @@
       --azul:  #14406b;   --azul2: #1e5a96;
       --tinta: #16242e;   --suave: #5a6b78;       --linea: #d7dee5;
     }
-    body { background: #f4f7fa; color: var(--tinta); margin: 0; }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      background: #f4f7fa; color: var(--tinta); margin: 0;
+      display: flex; flex-direction: column; height: 100vh; overflow: hidden;
+    }
 
     header.cab {
       background: linear-gradient(180deg,#ffffff 0%, #eef3f8 100%);
       border-bottom: 4px solid var(--azul);
-      padding: 10px 26px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap;
+      padding: 10px 26px 0; flex: 0 0 auto;
     }
+    .cab .fila { display: flex; align-items: center; gap: 26px; flex-wrap: wrap; }
     header.cab .titulo { display:flex; flex-direction:column; }
-    header.cab h1 { font-size: 30px; margin: 0; color: var(--azul); letter-spacing:.5px; }
-    header.cab .sub { font-size: 14px; color: var(--suave); }
+    header.cab h1 { font-size: clamp(26px, 2.4vw, 40px); margin: 0; color: var(--azul); letter-spacing:.5px; }
+    header.cab .sub { font-size: clamp(13px, 1vw, 16px); color: var(--suave); }
     .cab .relleno { flex: 1; }
 
     .contadores { display: flex; gap: 14px; }
     .cont {
       background: #fff; border: 1px solid var(--linea); border-radius: 12px;
-      padding: 8px 20px; text-align: center; min-width: 130px;
+      padding: 6px 20px; text-align: center; min-width: 130px;
       box-shadow: 0 1px 2px rgba(0,0,0,.04);
     }
-    .cont .num { font-size: 42px; font-weight: 800; line-height: 1; }
-    .cont .etq { font-size: 13px; color: var(--suave); text-transform: uppercase; letter-spacing:.5px; }
+    .cont .num { font-size: clamp(34px, 3.4vw, 56px); font-weight: 800; line-height: 1.05; }
+    .cont .etq { font-size: clamp(12px,.95vw,15px); color: var(--suave); text-transform: uppercase; letter-spacing:.5px; }
     .cont.ofer .num { color: var(--azul); }
     .cont.adj  .num { color: var(--rojo); }
     .cont.pend .num { color: var(--verde); }
-    .reloj { font-size: 15px; color: var(--suave); white-space: nowrap; }
+    .reloj { font-size: clamp(13px,1vw,16px); color: var(--suave); white-space: nowrap; text-align:right; }
 
-    .lienzo { display: grid; grid-template-columns: 1.7fr 1fr; gap: 22px; padding: 20px 26px; }
+    /* Barra de progreso global */
+    .progreso { height: 8px; background: #e4e9ee; border-radius: 999px; margin: 8px 0 10px; overflow: hidden; }
+    .progreso #barra { height: 100%; width: 0; background: linear-gradient(90deg, var(--rojo), #e06666); transition: width .5s ease; }
+
+    /* ---- Lienzo: dos columnas que llenan el alto, cada una con su scroll ---- */
+    .lienzo { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: 1.7fr 1fr; gap: 22px; padding: 14px 26px 18px; }
     @media (max-width: 1150px) { .lienzo { grid-template-columns: 1fr; } }
-    h2.sec { font-size: 22px; margin: 0 0 12px; display:flex; align-items:center; gap:10px; }
+    .col { display: flex; flex-direction: column; min-height: 0; }
+    h2.sec { font-size: clamp(18px, 1.7vw, 26px); margin: 0 0 10px; display:flex; align-items:center; gap:10px; flex: 0 0 auto; }
     h2.sec .punto { width: 16px; height: 16px; border-radius: 4px; display:inline-block; }
     h2.sec.left .punto { background: var(--verde); }
     h2.sec.right .punto { background: var(--rojo); }
+    h2.sec .cuantos { font-size: 60%; color: var(--suave); font-weight: 600; }
+    .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding-right: 4px; }
 
-    /* ---- Tablón por ofertar ---- */
+    /* ---- Tablón por ofertar: tarjetas en 2 columnas que fluyen ---- */
+    #pendientes { column-count: 2; column-gap: 16px; }
+    @media (max-width: 1500px) { #pendientes { column-count: 1; } }
     .centro {
       background: #fff; border: 1px solid var(--linea); border-radius: 14px;
-      padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      padding: 14px 16px; margin: 0 0 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      break-inside: avoid; -webkit-column-break-inside: avoid;
     }
     .centro.agotado { opacity: .55; }
-    .centro .cabc { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
-    .centro .nomc { font-size: 23px; font-weight: 800; color: var(--azul); text-transform: uppercase; }
+    .centro .cabc { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px; }
+    .centro .nomc { font-size: clamp(19px, 1.7vw, 26px); font-weight: 800; color: var(--azul); text-transform: uppercase; }
     .quedan-grande {
       font-size: 17px; font-weight: 800; color: var(--verde);
       background: var(--verde-bg); border: 1px solid var(--verde-bd);
       border-radius: 999px; padding: 4px 16px; white-space: nowrap;
     }
-    .quedan-grande b { font-size: 24px; }
+    .quedan-grande b { font-size: clamp(20px,1.8vw,26px); }
     .quedan-grande.cero { color: var(--suave); background:#f1f3f5; border-color: var(--linea); }
 
     .tipo { display:flex; align-items:center; gap: 12px; padding: 7px 0; border-top: 1px dashed var(--linea); }
-    .tipo .desc { flex: 1; font-size: 17px; }
-    .tipo .desc .det { color: var(--suave); font-size: 14px; }
+    .tipo .desc { flex: 1; font-size: clamp(15px,1.3vw,19px); }
+    .tipo .desc .det { color: var(--suave); font-size: clamp(13px,1vw,15px); }
     .tipo .cuenta { font-size: 15px; color: var(--suave); white-space: nowrap; }
     .tipo .cuenta b { color: var(--verde); font-size: 18px; }
-    .fichas { display:flex; flex-wrap: wrap; gap: 6px; max-width: 320px; }
+    .fichas { display:flex; flex-wrap: wrap; gap: 6px; max-width: 300px; }
     .ficha { width: 26px; height: 26px; border-radius: 6px; border: 1.5px solid; }
     .ficha.libre { background: var(--verde-bg); border-color: var(--verde-bd); }
     .ficha.dada  { background: var(--rojo-bg);  border-color: var(--rojo-bd); position: relative; }
@@ -74,7 +91,7 @@
       position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
 
     /* ---- Feed de adjudicados ---- */
-    .feed { background:#fff; border:1px solid var(--linea); border-radius:14px; overflow:hidden; }
+    .feed { background:#fff; border:1px solid var(--linea); border-radius:14px; }
     .item { display:flex; gap:12px; align-items:baseline; padding:11px 16px; border-bottom:1px solid var(--linea); }
     .item:last-child { border-bottom:0; }
     .item.nuevo { background: var(--verde-bg); animation: destello 1.6s ease-out 1; }
@@ -82,35 +99,38 @@
     .item .hora { font-variant-numeric: tabular-nums; color: var(--suave); font-size: 15px; min-width: 50px; }
     .item .nc { font-weight: 800; color: var(--rojo); font-size: 17px; min-width: 56px; }
     .item .quien { flex: 1; }
-    .item .quien .nom { font-size: 19px; font-weight: 700; }
-    .item .quien .contr { font-size: 14px; color: var(--suave); }
+    .item .quien .nom { font-size: clamp(17px,1.5vw,22px); font-weight: 700; }
+    .item .quien .contr { font-size: clamp(13px,1vw,15px); color: var(--suave); }
 
     .vacio { color: var(--suave); font-size: 19px; padding: 18px; text-align:center; }
   </style>
 </head>
 <body>
   <header class="cab">
-    <div class="titulo">
-      <h1>Selección enfermería</h1>
-      <span class="sub">Adjudicación de contratos · Granada</span>
+    <div class="fila">
+      <div class="titulo">
+        <h1>Selección enfermería</h1>
+        <span class="sub">Adjudicación de contratos · Granada</span>
+      </div>
+      <div class="relleno"></div>
+      <div class="contadores">
+        <div class="cont ofer"><div class="num" id="c-total">0</div><div class="etq">Ofertados</div></div>
+        <div class="cont adj"><div class="num" id="c-asig">0</div><div class="etq">Adjudicados</div></div>
+        <div class="cont pend"><div class="num" id="c-pend">0</div><div class="etq">Por ofertar</div></div>
+      </div>
+      <div class="reloj">Actualizado<br><span id="hora">—</span></div>
     </div>
-    <div class="relleno"></div>
-    <div class="contadores">
-      <div class="cont ofer"><div class="num" id="c-total">0</div><div class="etq">Ofertados</div></div>
-      <div class="cont adj"><div class="num" id="c-asig">0</div><div class="etq">Adjudicados</div></div>
-      <div class="cont pend"><div class="num" id="c-pend">0</div><div class="etq">Por ofertar</div></div>
-    </div>
-    <div class="reloj">Actualizado<br><span id="hora">—</span></div>
+    <div class="progreso"><div id="barra"></div></div>
   </header>
 
   <div class="lienzo">
-    <div>
+    <div class="col">
       <h2 class="sec left"><span class="punto"></span>Puestos por ofertar</h2>
-      <div id="pendientes"></div>
+      <div class="scroll"><div id="pendientes"></div></div>
     </div>
-    <div>
-      <h2 class="sec right"><span class="punto"></span>Se va cogiendo (por orden)</h2>
-      <div class="feed" id="adjudicados"></div>
+    <div class="col">
+      <h2 class="sec right"><span class="punto"></span>Se va cogiendo <span class="cuantos" id="cuantos"></span></h2>
+      <div class="scroll"><div class="feed" id="adjudicados"></div></div>
     </div>
   </div>
 

@@ -13,6 +13,12 @@ function fechas(p) {
 }
 function claveCentro(c) { return (c || "(Sin centro)").trim().toLowerCase().replace(/\s+/g, " "); }
 function hhmm(h) { return h ? String(h).slice(0, 5) : ""; }
+// Duración robusta: vacío -> ""; si es número -> "N días"; si es texto -> tal cual.
+function dur(p) {
+  const v = String(p.duracion == null ? "" : p.duracion).trim();
+  if (!v) return "";
+  return /^\d+$/.test(v) ? `${v} días` : v;
+}
 
 let vistos = null;  // ids de adjudicados ya mostrados (para resaltar los nuevos)
 
@@ -26,6 +32,8 @@ async function refrescar() {
   $("c-asig").textContent = d.resumen.adjudicados;
   $("c-pend").textContent = d.resumen.pendientes;
   $("hora").textContent = d.actualizado;
+  const pct = d.resumen.total ? (d.resumen.adjudicados / d.resumen.total * 100) : 0;
+  $("barra").style.width = pct + "%";
 
   pintarTablon(d.puestos);
   pintarFeed(d.puestos.filter(p => p.adjudicado));
@@ -67,7 +75,7 @@ function tarjetaCentro(c) {
                  + '<span class="ficha dada"></span>'.repeat(t.dadas);
     const det = [fechas(p), p.turno].filter(Boolean).map(esc).join(" · ");
     return `<div class="tipo">
-        <div class="desc"><b>${esc(p.duracion)} días</b>${det ? `<div class="det">${det}</div>` : ""}</div>
+        <div class="desc"><b>${esc(dur(p))}</b>${det ? `<div class="det">${det}</div>` : ""}</div>
         <div class="fichas">${fichas}</div>
         <div class="cuenta">Quedan <b>${t.libres}</b> de ${t.libres + t.dadas}</div>
       </div>`;
@@ -83,6 +91,7 @@ function tarjetaCentro(c) {
 
 // ----- Feed "se va cogiendo": adjudicados, lo más reciente arriba -----
 function pintarFeed(lista) {
+  $("cuantos").textContent = lista.length ? `(${lista.length})` : "";
   if (!lista.length) {
     $("adjudicados").innerHTML = '<p class="vacio">Aún no se ha cogido ningún contrato.</p>';
     vistos = new Set();
@@ -98,7 +107,7 @@ function pintarFeed(lista) {
 
   const html = orden.map(p => {
     const nuevo = !primera && !vistos.has(p.id);
-    const contrato = [p.centro, p.duracion ? `${p.duracion} d` : "", fechas(p)].filter(Boolean).map(esc).join(" · ");
+    const contrato = [p.centro, dur(p), fechas(p)].filter(Boolean).map(esc).join(" · ");
     return `<div class="item ${nuevo ? "nuevo" : ""}">
         <span class="hora">${esc(hhmm(p.hora))}</span>
         <span class="nc">Nº${esc(p.num_candidato)}</span>
