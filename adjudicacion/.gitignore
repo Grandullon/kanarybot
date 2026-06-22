@@ -3,6 +3,11 @@
 __pycache__/
 *.pyc
 
+# Artefactos de PyInstaller
+build/
+dist/
+*.spec
+
 # Configuración local y copias de seguridad (contienen rutas/datos del acto)
 config.json
 backups/

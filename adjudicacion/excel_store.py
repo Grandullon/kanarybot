@@ -1,23 +1,32 @@
 """
-Gestión de los Excel para el acto de adjudicación.
+Gestión de los Excel para el acto de adjudicación de contratos.
 
-Hay DOS fuentes (pueden ser dos archivos distintos o dos hojas del mismo libro):
+Trabaja con DOS archivos (o dos hojas), y CADA aceptación se refleja en LOS DOS:
 
-  1. CANDIDATOS (solo lectura): el "listado definitivo" de inscritos, ya ordenado.
-     Como no trae columna de número, el Nº de cada candidato = su posición en la lista
-     (1, 2, 3, ...). Eso es lo que se canta en el acto ("Juan 173", "Marisa 83").
-     Se lee con valores cacheados (data_only) porque tiene fórmulas de puntos, y NUNCA
-     se escribe.
+  1. CANDIDATOS  (listado definitivo de inscritos)
+     - El Nº de candidato = su posición en la lista (1, 2, 3, ...): es lo que se canta
+       en el acto ("el 177, fulanito, acepta este contrato").
+     - Al asignar/cambiar estado se escribe en sus columnas de oferta
+       (Oferta Estado / Oferta Aceptada / Oferta Datos): así queda constancia de que esa
+       persona YA tiene contrato aceptado.
 
-  2. PUESTOS / CONTRATOS (lectura + escritura): la relación de puestos a ofertar, con
-     columnas tipo: centro, duracion, turno, nombre profesional acepta,
-     dni profesional acepta, estado. Aquí se escribe quién acepta cada puesto.
+  2. PUESTOS / SELECCIÓN  (relación de contratos a ofertar)
+     - Columnas tipo: centro, fecha inicio, fecha fin, duracion, turno, seleccinado,
+       estado, anotacion.
+     - Al asignar se escribe el nombre del candidato en «seleccinado» y el estado. En cuanto
+       el estado es «Aceptado», el puesto deja de contar como "por ofertar".
 
-La escritura del archivo de puestos es segura: copia de seguridad previa, escritura a
-temporal y reemplazo atómico, todo bajo un único bloqueo (un solo operador/proceso).
+Reglas de visualización:
+  - Un puesto está ADJUDICADO (deja de ofertarse) cuando su estado es «Aceptado».
+  - Cualquier otro estado (Pendiente, Contactado, No contesta, Renuncia) lo mantiene en la
+    lista de "por ofertar" (sigue disponible / en gestión).
+
+Seguridad de escritura: copia de seguridad previa + guardado atómico, todo bajo un único
+bloqueo (un solo operador/proceso). Si un Excel está abierto, se avisa y no se pierde nada.
 """
 
 import os
+import sys
 import json
 import shutil
 import tempfile
@@ -29,15 +38,20 @@ from openpyxl import load_workbook
 
 ESTADOS = ["Aceptado", "Contactado", "No contesta", "Renuncia", "Pendiente"]
 ESTADO_INICIAL = "Pendiente"
+ESTADO_ADJUDICADO = "Aceptado"  # único estado que retira el puesto de "por ofertar"
 
 # Columnas auxiliares que se añaden al archivo de puestos si no existen ya.
-COL_NUM_CAND = "Nº candidato"
+COL_NUM = "Nº candidato"
+COL_DNI_AUX = "DNI candidato"
 COL_HORA = "Hora"
 
-# Cuántas filas vacías seguidas marcan el final de los datos (el Excel reporta
-# 1.048.576 filas aunque solo haya unas pocas con datos).
+# Filas vacías seguidas que marcan el final de los datos (Excel reporta 1.048.576 filas).
 _RACHA_VACIAS = 80
 
+
+# --------------------------------------------------------------------- #
+#  Utilidades
+# --------------------------------------------------------------------- #
 
 def _normaliza(texto):
     """Minúsculas sin acentos ni espacios sobrantes, para comparar y buscar."""
@@ -59,16 +73,16 @@ def _adivina(cabeceras, palabras_clave):
 
 
 def _valor(fila, idx):
-    """Valor limpio de una celda; '' si no existe. Enteros sin '.0'."""
+    """Valor limpio de una celda; '' si no existe. Enteros sin '.0'; fechas dd/mm/aaaa."""
     if idx is None or fila is None or idx >= len(fila):
         return ""
     v = fila[idx]
     if v is None:
         return ""
-    if isinstance(v, float) and v.is_integer():
-        return str(int(v))
     if isinstance(v, datetime):
         return v.strftime("%d/%m/%Y")
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
     return v.strip() if isinstance(v, str) else str(v)
 
 
@@ -89,6 +103,13 @@ def _idx(cabeceras, nombre):
     return None
 
 
+def _escribe(ws, fila, cab, nombre_col, valor):
+    """Escribe `valor` en la celda (fila, columna-por-cabecera) si la columna existe."""
+    i = _idx(cab, nombre_col)
+    if i is not None:
+        ws.cell(row=fila, column=i + 1).value = valor
+
+
 def _filas_datos(ws):
     """Genera (numero_fila, tupla_valores) saltando filas vacías; corta tras una racha."""
     vacias = 0
@@ -102,8 +123,12 @@ def _filas_datos(ws):
         yield nfila, fila
 
 
+# --------------------------------------------------------------------- #
+#  Almacén
+# --------------------------------------------------------------------- #
+
 class ExcelStore:
-    """Acceso a los Excel de candidatos (lectura) y puestos (lectura/escritura)."""
+    """Acceso a los Excel de candidatos y de puestos. Toda escritura va bajo bloqueo."""
 
     def __init__(self, config):
         self.config = config
@@ -111,13 +136,10 @@ class ExcelStore:
         self.ultimo_error = None
         self._cache_candidatos = None  # el listado no cambia durante el acto
 
-    # ------------------------------------------------------------------ #
-    #  Auto-detección de columnas (para la pantalla /config)
-    # ------------------------------------------------------------------ #
+    # ----------------------- Auto-detección (/config) ----------------- #
 
     @staticmethod
     def info_excel(ruta):
-        """Devuelve {hojas, cabeceras_por_hoja} de un archivo Excel."""
         wb = load_workbook(ruta, read_only=True, data_only=True)
         info = {"hojas": wb.sheetnames, "cabeceras": {}}
         for h in wb.sheetnames:
@@ -132,14 +154,16 @@ class ExcelStore:
         cab = _cabeceras(wb[hoja])
         wb.close()
         return {
-            "ruta": ruta,
-            "hoja": hoja,
+            "ruta": ruta, "hoja": hoja,
             "col_nombre": _adivina(cab, ["nombre"]) or "",
             "col_apellidos": _adivina(cab, ["apellido"]) or "",
             "col_dni": _adivina(cab, ["dni", "nif", "documento"]) or "",
             "col_letra": _adivina(cab, ["letra"]) or "",
             "col_telefono": _adivina(cab, ["tlf", "telefono", "movil"]) or "",
-            "col_puntos": _adivina(cab, ["total puntos", "baremo", "puntos"]) or "",
+            "col_puntos": _adivina(cab, ["autobaremo", "total puntos", "puntos"]) or "",
+            "col_oferta_estado": _adivina(cab, ["oferta estado", "estado oferta"]) or "",
+            "col_oferta_aceptada": _adivina(cab, ["oferta aceptada", "aceptada"]) or "",
+            "col_oferta_datos": _adivina(cab, ["oferta datos", "datos oferta"]) or "",
             "cabeceras": cab,
         }
 
@@ -150,21 +174,20 @@ class ExcelStore:
         cab = _cabeceras(wb[hoja])
         wb.close()
         return {
-            "ruta": ruta,
-            "hoja": hoja,
+            "ruta": ruta, "hoja": hoja,
             "col_centro": _adivina(cab, ["centro", "hospital", "distrito", "destino"]) or "",
-            "col_duracion": _adivina(cab, ["duracion", "meses", "tiempo", "periodo"]) or "",
+            "col_fecha_inicio": _adivina(cab, ["fecha inicio", "inicio", "alta"]) or "",
+            "col_fecha_fin": _adivina(cab, ["fecha fin", "fin", "hasta"]) or "",
+            "col_duracion": _adivina(cab, ["duracion", "dias", "meses", "tiempo", "periodo"]) or "",
             "col_turno": _adivina(cab, ["turno", "jornada"]) or "",
-            "col_descripcion": _adivina(cab, ["descrip", "puesto", "categoria", "plaza"]) or "",
-            "col_nombre_acepta": _adivina(cab, ["nombre profesional", "profesional acepta", "asignado", "nombre acepta"]) or "",
-            "col_dni_acepta": _adivina(cab, ["dni profesional", "dni acepta", "dni asignado"]) or "",
+            "col_nombre_acepta": _adivina(cab, ["seleccin", "seleccion", "selecc", "profesional acepta", "nombre acepta", "asignado", "acepta"]) or "",
+            "col_dni_acepta": _adivina(cab, ["dni acepta", "dni profesional", "dni asignado", "dni"]) or "",
             "col_estado": _adivina(cab, ["estado"]) or "",
+            "col_anotacion": _adivina(cab, ["anotac", "observ", "nota"]) or "",
             "cabeceras": cab,
         }
 
-    # ------------------------------------------------------------------ #
-    #  Lectura de candidatos (solo lectura, con caché)
-    # ------------------------------------------------------------------ #
+    # ----------------------- Candidatos (lectura) --------------------- #
 
     def candidatos(self):
         if self._cache_candidatos is not None:
@@ -184,12 +207,13 @@ class ExcelStore:
 
             lista = []
             numero = 0
-            for _, fila in _filas_datos(ws):
+            for nfila, fila in _filas_datos(ws):
                 numero += 1
                 nombre = _valor(fila, i_nom)
                 apellidos = _valor(fila, i_ape)
                 lista.append({
-                    "numero": numero,  # posición en el listado definitivo
+                    "numero": numero,       # posición en el listado definitivo
+                    "fila": nfila,          # fila real en el Excel (para escribir de vuelta)
                     "nombre": (nombre + " " + apellidos).strip(),
                     "dni": self._dni_completo(_valor(fila, i_dni), _valor(fila, i_let)),
                     "telefono": _valor(fila, i_tlf),
@@ -221,7 +245,7 @@ class ExcelStore:
         """Busca por número (exacto/prefijo), nombre o DNI, ordenando por relevancia.
 
         Prioridad: nº exacto > nº que empieza por > nombre > DNI. Así, al cantar
-        "el 173", el candidato nº 173 aparece el primero aunque haya DNIs con un 173.
+        "el 177", el candidato nº 177 aparece el primero aunque haya DNIs con un 177.
         """
         q = _normaliza(consulta)
         if not q:
@@ -243,9 +267,7 @@ class ExcelStore:
         puntuados.sort(key=lambda x: (x[0], x[1]))
         return [c for _, _, c in puntuados[:limite]]
 
-    # ------------------------------------------------------------------ #
-    #  Lectura de puestos (fuente de la verdad; se relee del disco)
-    # ------------------------------------------------------------------ #
+    # ----------------------- Puestos (lectura) ------------------------ #
 
     def puestos(self):
         p = self.config["puestos"]
@@ -253,129 +275,249 @@ class ExcelStore:
         try:
             ws = wb[p["hoja"]]
             cab = _cabeceras(ws)
-            i_centro = _idx(cab, p.get("col_centro"))
-            i_dur = _idx(cab, p.get("col_duracion"))
-            i_turno = _idx(cab, p.get("col_turno"))
-            i_desc = _idx(cab, p.get("col_descripcion"))
-            i_nom = _idx(cab, p.get("col_nombre_acepta"))
-            i_dni = _idx(cab, p.get("col_dni_acepta"))
-            i_est = _idx(cab, p.get("col_estado"))
-            i_numc = _idx(cab, COL_NUM_CAND)
-
+            i = {
+                "centro": _idx(cab, p.get("col_centro")),
+                "fini": _idx(cab, p.get("col_fecha_inicio")),
+                "ffin": _idx(cab, p.get("col_fecha_fin")),
+                "dur": _idx(cab, p.get("col_duracion")),
+                "turno": _idx(cab, p.get("col_turno")),
+                "nom": _idx(cab, p.get("col_nombre_acepta")),
+                "dni": _idx(cab, p.get("col_dni_acepta")),
+                "est": _idx(cab, p.get("col_estado")),
+                "anot": _idx(cab, p.get("col_anotacion")),
+                "numc": _idx(cab, COL_NUM),
+                "dniaux": _idx(cab, COL_DNI_AUX),
+            }
             lista = []
             for nfila, fila in _filas_datos(ws):
-                asignado = _valor(fila, i_nom)
+                estado = _valor(fila, i["est"]) or ESTADO_INICIAL
+                asignado = _valor(fila, i["nom"])
                 lista.append({
                     "id": nfila,
-                    "centro": _valor(fila, i_centro),
-                    "duracion": _valor(fila, i_dur),
-                    "turno": _valor(fila, i_turno),
-                    "descripcion": _valor(fila, i_desc),
+                    "centro": _valor(fila, i["centro"]),
+                    "fecha_inicio": _valor(fila, i["fini"]),
+                    "fecha_fin": _valor(fila, i["ffin"]),
+                    "duracion": _valor(fila, i["dur"]),
+                    "turno": _valor(fila, i["turno"]),
                     "asignado_a": asignado,
-                    "dni_asignado": _valor(fila, i_dni),
-                    "num_candidato": _valor(fila, i_numc),
-                    "estado": _valor(fila, i_est) or ESTADO_INICIAL,
+                    "dni_asignado": _valor(fila, i["dni"]) or _valor(fila, i["dniaux"]),
+                    "num_candidato": _valor(fila, i["numc"]),
+                    "estado": estado,
+                    "anotacion": _valor(fila, i["anot"]),
+                    "adjudicado": estado == ESTADO_ADJUDICADO,
                 })
         finally:
             wb.close()
         return lista
 
+    def _puesto_por_id(self, pid):
+        pid = int(pid)
+        for p in self.puestos():
+            if p["id"] == pid:
+                return p
+        return None
+
     def estado(self):
         """Estado completo para la API (panel y pantalla)."""
         puestos = self.puestos()
-        asignados = sum(1 for x in puestos if x["asignado_a"])
+        adjudicados = sum(1 for x in puestos if x["adjudicado"])
         return {
             "puestos": puestos,
             "estados": self.config.get("estados", ESTADOS),
             "resumen": {
                 "total": len(puestos),
-                "asignados": asignados,
-                "pendientes": len(puestos) - asignados,
+                "adjudicados": adjudicados,
+                "pendientes": len(puestos) - adjudicados,  # por ofertar
             },
             "actualizado": datetime.now().strftime("%H:%M:%S"),
             "ultimo_error": self.ultimo_error,
         }
 
-    # ------------------------------------------------------------------ #
-    #  Escritura sobre el archivo de puestos
-    # ------------------------------------------------------------------ #
+    # ----------------------- Escritura (acciones) --------------------- #
 
     def asignar(self, puesto_id, numero_candidato, estado=None):
+        """Asigna un candidato a un puesto y lo refleja en LOS DOS archivos."""
         cand = self.candidato_por_numero(numero_candidato)
         if cand is None:
             self.ultimo_error = f"No existe el candidato nº {numero_candidato}."
             return False
-        estado = estado or "Aceptado"
+        estado = estado or ESTADO_ADJUDICADO
         with self.lock:
-            return self._modificar(puesto_id, lambda c: self._escribir_asignacion(c, cand, estado))
+            puesto = self._puesto_por_id(puesto_id)
+            if puesto is None:
+                self.ultimo_error = "No se encontró el puesto indicado."
+                return False
+            anterior = puesto.get("num_candidato")
+
+            # 1) Escribir en el archivo de PUESTOS.
+            if not self._escribir_puesto(puesto_id, cand, estado):
+                return False
+
+            # 2) Si el puesto estaba asignado a otra persona, liberar a esa persona.
+            if anterior and str(anterior) != str(cand["numero"]):
+                self._limpiar_candidato(anterior)
+
+            # 3) Escribir en el archivo de CANDIDATOS (constancia de su contrato).
+            aceptada = self._texto_contrato(puesto)
+            datos = f"Puesto #{int(puesto_id) - 1} · {datetime.now():%d/%m %H:%M}"
+            if not self._marcar_candidato(cand, estado, aceptada, datos):
+                self.ultimo_error = (
+                    "El puesto se guardó, pero NO se pudo actualizar el listado de "
+                    "candidatos (¿está abierto en Excel?). Ciérralo y vuelve a asignar."
+                )
+                return False
+
+            self.ultimo_error = None
+            return True
 
     def cambiar_estado(self, puesto_id, estado):
         with self.lock:
-            return self._modificar(puesto_id, lambda c: self._set(c, c["i_est"], estado))
+            puesto = self._puesto_por_id(puesto_id)
+            if puesto is None:
+                self.ultimo_error = "No se encontró el puesto indicado."
+                return False
+            if not self._editar_puesto(puesto_id, lambda ws, cab: (
+                    _escribe(ws, int(puesto_id), cab, self.config["puestos"].get("col_estado"), estado),
+                    _escribe(ws, int(puesto_id), cab, COL_HORA, datetime.now().strftime("%H:%M")))):
+                return False
+            # Reflejar el estado también en el candidato asignado.
+            if puesto.get("num_candidato"):
+                self._marcar_candidato_estado(puesto["num_candidato"], estado)
+            self.ultimo_error = None
+            return True
 
     def liberar(self, puesto_id):
+        """Quita la asignación del puesto (vuelve a 'por ofertar') y limpia al candidato."""
         with self.lock:
-            return self._modificar(puesto_id, self._limpiar)
+            puesto = self._puesto_por_id(puesto_id)
+            if puesto is None:
+                self.ultimo_error = "No se encontró el puesto indicado."
+                return False
+            anterior = puesto.get("num_candidato")
+            p = self.config["puestos"]
 
-    def _modificar(self, puesto_id, accion):
-        p = self.config["puestos"]
-        ruta = p["ruta"]
-        self._backup(ruta)
-        wb = load_workbook(ruta)  # sin data_only: conserva fórmulas de otras columnas
-        try:
-            ws = wb[p["hoja"]]
-            cab = list(_cabeceras(ws))
-            # Asegura columnas auxiliares (Nº candidato y Hora) al final si no existen.
-            for extra in (COL_NUM_CAND, COL_HORA):
-                if _idx(cab, extra) is None:
-                    ws.cell(row=1, column=len(cab) + 1).value = extra
-                    cab.append(extra)
+            def acc(ws, cab):
+                f = int(puesto_id)
+                _escribe(ws, f, cab, p.get("col_nombre_acepta"), None)
+                _escribe(ws, f, cab, p.get("col_dni_acepta"), None)
+                _escribe(ws, f, cab, p.get("col_estado"), ESTADO_INICIAL)
+                _escribe(ws, f, cab, COL_NUM, None)
+                _escribe(ws, f, cab, COL_DNI_AUX, None)
+                _escribe(ws, f, cab, COL_HORA, None)
 
-            ctx = {
-                "ws": ws,
-                "fila": int(puesto_id),
-                "i_nom": _idx(cab, p.get("col_nombre_acepta")),
-                "i_dni": _idx(cab, p.get("col_dni_acepta")),
-                "i_est": _idx(cab, p.get("col_estado")),
-                "i_numc": _idx(cab, COL_NUM_CAND),
-                "i_hora": _idx(cab, COL_HORA),
-            }
-            accion(ctx)
-            self._guardar_atomico(wb, ruta)
+            if not self._editar_puesto(puesto_id, acc):
+                return False
+            if anterior:
+                self._limpiar_candidato(anterior)
             self.ultimo_error = None
+            return True
+
+    # ----------------------- Escritores internos ---------------------- #
+
+    @staticmethod
+    def _texto_contrato(puesto):
+        partes = [puesto.get("centro", "")]
+        if puesto.get("duracion"):
+            partes.append(f"{puesto['duracion']} d")
+        if puesto.get("turno"):
+            partes.append(puesto["turno"])
+        txt = " · ".join(p for p in partes if p)
+        if puesto.get("fecha_inicio"):
+            txt += f" ({puesto['fecha_inicio']}–{puesto.get('fecha_fin', '')})"
+        return txt
+
+    def _escribir_puesto(self, puesto_id, cand, estado):
+        p = self.config["puestos"]
+        tiene_col_dni = bool(_idx(self._cab_puestos(), p.get("col_dni_acepta")))
+
+        def acc(ws, cab):
+            f = int(puesto_id)
+            _escribe(ws, f, cab, p.get("col_nombre_acepta"), cand["nombre"])
+            _escribe(ws, f, cab, p.get("col_estado"), estado)
+            _escribe(ws, f, cab, COL_NUM, cand["numero"])
+            _escribe(ws, f, cab, COL_HORA, datetime.now().strftime("%H:%M"))
+            if tiene_col_dni:
+                _escribe(ws, f, cab, p.get("col_dni_acepta"), cand["dni"])
+            else:
+                _escribe(ws, f, cab, COL_DNI_AUX, cand["dni"])
+
+        return self._editar_puesto(puesto_id, acc)
+
+    def _editar_puesto(self, puesto_id, accion):
+        p = self.config["puestos"]
+        return self._editar(p["ruta"], p["hoja"], accion,
+                            extra_cols=(COL_NUM, COL_DNI_AUX, COL_HORA))
+
+    def _marcar_candidato(self, cand, estado, aceptada, datos):
+        c = self.config["candidatos"]
+
+        def acc(ws, cab):
+            f = cand["fila"]
+            _escribe(ws, f, cab, c.get("col_oferta_estado"), estado)
+            _escribe(ws, f, cab, c.get("col_oferta_aceptada"), aceptada)
+            _escribe(ws, f, cab, c.get("col_oferta_datos"), datos)
+
+        return self._editar(c["ruta"], c["hoja"], acc)
+
+    def _marcar_candidato_estado(self, numero, estado):
+        cand = self.candidato_por_numero(numero)
+        if cand is None:
+            return True
+        c = self.config["candidatos"]
+        return self._editar(c["ruta"], c["hoja"], lambda ws, cab:
+                            _escribe(ws, cand["fila"], cab, c.get("col_oferta_estado"), estado))
+
+    def _limpiar_candidato(self, numero):
+        cand = self.candidato_por_numero(numero)
+        if cand is None:
+            return True
+        c = self.config["candidatos"]
+
+        def acc(ws, cab):
+            f = cand["fila"]
+            _escribe(ws, f, cab, c.get("col_oferta_estado"), None)
+            _escribe(ws, f, cab, c.get("col_oferta_aceptada"), None)
+            _escribe(ws, f, cab, c.get("col_oferta_datos"), None)
+
+        return self._editar(c["ruta"], c["hoja"], acc)
+
+    def _cab_puestos(self):
+        p = self.config["puestos"]
+        wb = load_workbook(p["ruta"], read_only=True)
+        try:
+            return _cabeceras(wb[p["hoja"]])
+        finally:
+            wb.close()
+
+    # ----------------------- Edición segura de un Excel --------------- #
+
+    def _editar(self, ruta, hoja, accion, extra_cols=()):
+        """Abre el Excel, aplica `accion(ws, cabeceras)` y guarda de forma segura.
+
+        Conserva fórmulas y formato (no usa data_only). Crea las columnas auxiliares que
+        falten. Hace copia de seguridad y guardado atómico. Si el archivo está abierto en
+        otro programa, deja `ultimo_error` y devuelve False (sin perder datos).
+        """
+        self._backup(ruta)
+        wb = load_workbook(ruta)
+        try:
+            ws = wb[hoja]
+            cab = list(_cabeceras(ws))
+            for col in extra_cols:
+                if _idx(cab, col) is None:
+                    ws.cell(row=1, column=len(cab) + 1).value = col
+                    cab.append(col)
+            accion(ws, cab)
+            self._guardar_atomico(wb, ruta)
             return True
         except PermissionError:
             self.ultimo_error = (
-                "No se pudo guardar: el archivo de puestos está abierto en Excel. "
+                f"No se pudo guardar «{os.path.basename(ruta)}»: está abierto en Excel. "
                 "Ciérralo y vuelve a intentarlo."
             )
             return False
         finally:
             wb.close()
-
-    @staticmethod
-    def _set(ctx, idx0, valor):
-        """Escribe en la celda de la fila actual dada la columna 0-based."""
-        if idx0 is not None:
-            ctx["ws"].cell(row=ctx["fila"], column=idx0 + 1).value = valor
-
-    def _escribir_asignacion(self, ctx, cand, estado):
-        self._set(ctx, ctx["i_nom"], cand["nombre"])
-        self._set(ctx, ctx["i_dni"], cand["dni"])
-        self._set(ctx, ctx["i_est"], estado)
-        self._set(ctx, ctx["i_numc"], cand["numero"])
-        self._set(ctx, ctx["i_hora"], datetime.now().strftime("%H:%M"))
-
-    def _limpiar(self, ctx):
-        self._set(ctx, ctx["i_nom"], None)
-        self._set(ctx, ctx["i_dni"], None)
-        self._set(ctx, ctx["i_est"], ESTADO_INICIAL)
-        self._set(ctx, ctx["i_numc"], None)
-        self._set(ctx, ctx["i_hora"], None)
-
-    # ------------------------------------------------------------------ #
-    #  Seguridad de escritura
-    # ------------------------------------------------------------------ #
 
     @staticmethod
     def _backup(ruta):
@@ -396,11 +538,17 @@ class ExcelStore:
         os.replace(tmp, ruta)
 
 
-# ---------------------------------------------------------------------- #
-#  Persistencia de la configuración
-# ---------------------------------------------------------------------- #
+# --------------------------------------------------------------------- #
+#  Configuración (persistente junto al .exe o al script)
+# --------------------------------------------------------------------- #
 
-CONFIG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json")
+def _dir_persistente():
+    if getattr(sys, "frozen", False):  # ejecutable PyInstaller
+        return os.path.dirname(os.path.abspath(sys.executable))
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+CONFIG_PATH = os.path.join(_dir_persistente(), "config.json")
 
 
 def cargar_config():

@@ -26,7 +26,7 @@ async function cargar() {
   ESTADO = d;
   aviso(d.ultimo_error);
   $("c-total").textContent = d.resumen.total;
-  $("c-asig").textContent = d.resumen.asignados;
+  $("c-asig").textContent = d.resumen.adjudicados;
   $("c-pend").textContent = d.resumen.pendientes;
   $("hora").textContent = d.actualizado;
   rellenarCentros();
@@ -55,16 +55,20 @@ function filtrados() {
   const est = $("filtro-estado").value;
   return ESTADO.puestos.filter(p => {
     if (centro && p.centro !== centro) return false;
-    if (est === "__pend" && p.asignado_a) return false;
-    if (est === "__asig" && !p.asignado_a) return false;
-    if (est && est !== "__pend" && est !== "__asig" && p.estado !== est) return false;
+    if (est === "__pend" && p.adjudicado) return false;
+    if (est === "__adj" && !p.adjudicado) return false;
     if (txt) {
-      const blob = [p.centro, p.duracion, p.turno, p.descripcion, p.asignado_a, p.dni_asignado, p.num_candidato, p.estado]
+      const blob = [p.centro, p.fecha_inicio, p.fecha_fin, p.duracion, p.turno, p.asignado_a, p.dni_asignado, p.num_candidato, p.estado]
         .join(" ").toLowerCase();
       if (!blob.includes(txt)) return false;
     }
     return true;
   });
+}
+
+function fechas(p) {
+  if (!p.fecha_inicio && !p.fecha_fin) return "";
+  return `${esc(p.fecha_inicio)} – ${esc(p.fecha_fin)}`;
 }
 
 function pintar() {
@@ -76,9 +80,10 @@ function pintar() {
       ? `<b>${esc(p.asignado_a)}</b>` + (p.num_candidato ? ` <span class="mini">(nº ${esc(p.num_candidato)})</span>` : "")
         + (p.dni_asignado ? `<br><span class="mini">${esc(p.dni_asignado)}</span>` : "")
       : '<span class="mini">—</span>';
-    return `<tr class="${asignado ? 'asignado' : ''}">
+    return `<tr class="${p.adjudicado ? 'asignado' : ''}">
       <td>${p.id - 1}</td>
       <td>${esc(p.centro)}</td>
+      <td class="mini">${fechas(p)}</td>
       <td>${esc(p.duracion)}</td>
       <td>${esc(p.turno)}</td>
       <td>${persona}</td>
@@ -93,7 +98,7 @@ function pintar() {
       </td>
     </tr>`;
   }).join("");
-  if (!filas.length) cuerpo.innerHTML = '<tr><td colspan="7" class="mini" style="padding:20px">Sin puestos que coincidan con el filtro.</td></tr>';
+  if (!filas.length) cuerpo.innerHTML = '<tr><td colspan="8" class="mini" style="padding:20px">Sin puestos que coincidan con el filtro.</td></tr>';
 }
 
 // ---------- Acciones ----------
@@ -105,7 +110,7 @@ async function cambiarEstado(id, estado) {
 }
 
 async function liberar(id) {
-  if (!confirm("¿Liberar este puesto y dejarlo pendiente?")) return;
+  if (!confirm("¿Liberar este puesto y dejarlo de nuevo por ofertar?")) return;
   const d = await api("/api/liberar", postJSON({ puesto_id: id }));
   if (!d.ok) aviso(d.error);
   cargar();
@@ -116,7 +121,8 @@ async function liberar(id) {
 function abrirAsignar(id) {
   PUESTO_ACTUAL = ESTADO.puestos.find(p => p.id === id);
   CAND_SELECC = null;
-  $("modal-titulo").textContent = `Asignar: ${PUESTO_ACTUAL.centro} · ${PUESTO_ACTUAL.duracion} ${PUESTO_ACTUAL.turno}`.trim();
+  const f = (PUESTO_ACTUAL.fecha_inicio ? ` · ${PUESTO_ACTUAL.fecha_inicio}–${PUESTO_ACTUAL.fecha_fin}` : "");
+  $("modal-titulo").textContent = `Asignar: ${PUESTO_ACTUAL.centro} · ${PUESTO_ACTUAL.duracion}d ${PUESTO_ACTUAL.turno}${f}`.trim();
   $("busca-cand").value = "";
   $("sugerencias").style.display = "none";
   $("modal-estado").value = "Aceptado";
@@ -182,8 +188,8 @@ async function aceptarAsignacion() {
     numero_candidato: CAND_SELECC.numero,
     estado: $("modal-estado").value,
   }));
-  if (!d.ok) { aviso(d.error); return; }
   cerrarModal();
+  if (!d.ok && d.error) aviso(d.error);
   cargar();
 }
 

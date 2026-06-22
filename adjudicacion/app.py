@@ -9,6 +9,8 @@ Un único operador la maneja desde el navegador:
 Arranque:  python app.py   (o usa run.bat / run.sh)
 """
 
+import os
+import sys
 import webbrowser
 import threading
 
@@ -17,7 +19,16 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 import excel_store
 from excel_store import ExcelStore
 
-app = Flask(__name__)
+
+def _recurso(rel):
+    """Ruta a templates/static, también cuando corre como .exe de PyInstaller."""
+    base = getattr(sys, "_MEIPASS", os.path.dirname(os.path.abspath(__file__)))
+    return os.path.join(base, rel)
+
+
+app = Flask(__name__,
+            template_folder=_recurso("templates"),
+            static_folder=_recurso("static"))
 
 # Estado global del proceso (un solo operador, un solo proceso).
 STORE = None

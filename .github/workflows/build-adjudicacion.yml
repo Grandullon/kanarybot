@@ -1,0 +1,65 @@
+name: Construir ejecutable de adjudicación (Windows)
+
+# Genera Adjudicacion.exe para Windows y lo publica como Release descargable,
+# para poder ejecutarlo directamente en el equipo sin instalar Python.
+
+on:
+  push:
+    branches: [ claude/job-posting-tracker-75cjm4 ]
+    paths:
+      - 'adjudicacion/**'
+      - '.github/workflows/build-adjudicacion.yml'
+  workflow_dispatch:        # permite lanzarlo a mano desde la pestaña Actions
+
+permissions:
+  contents: write           # necesario para crear/actualizar la Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Descargar el código
+        uses: actions/checkout@v4
+
+      - name: Preparar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Instalar dependencias
+        working-directory: adjudicacion
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller
+
+      - name: Construir el ejecutable
+        working-directory: adjudicacion
+        run: >
+          pyinstaller --noconfirm --onefile --name Adjudicacion
+          --add-data "templates;templates"
+          --add-data "static;static"
+          app.py
+
+      - name: Subir como artefacto (descargable desde Actions)
+        uses: actions/upload-artifact@v4
+        with:
+          name: Adjudicacion-windows
+          path: adjudicacion/dist/Adjudicacion.exe
+
+      - name: Publicar Release con el .exe
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: adjudicacion-latest
+          name: Aplicación de adjudicación (última versión)
+          body: |
+            Ejecutable de Windows para el acto de adjudicación de contratos.
+
+            **Cómo usarlo:**
+            1. Descarga `Adjudicacion.exe`.
+            2. Ponlo en una carpeta junto a tus dos Excel (candidatos y selección).
+            3. Doble clic. Se abre el navegador con el panel.
+            4. En ⚙️ Configuración indica los dos Excel y guarda.
+
+            Pantalla de proyección: http://localhost:5000/pantalla
+          files: adjudicacion/dist/Adjudicacion.exe
+          make_latest: true
