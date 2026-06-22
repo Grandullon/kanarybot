@@ -215,6 +215,7 @@ class ExcelStore:
                     "numero": numero,       # posición en el listado definitivo
                     "fila": nfila,          # fila real en el Excel (para escribir de vuelta)
                     "nombre": (nombre + " " + apellidos).strip(),
+                    "nombre_pila": nombre,  # solo el nombre (sin apellidos), para la pantalla
                     "dni": self._dni_completo(_valor(fila, i_dni), _valor(fila, i_let)),
                     "telefono": _valor(fila, i_tlf),
                     "puntos": _valor(fila, i_pts),
@@ -287,6 +288,7 @@ class ExcelStore:
                 "anot": _idx(cab, p.get("col_anotacion")),
                 "numc": _idx(cab, COL_NUM),
                 "dniaux": _idx(cab, COL_DNI_AUX),
+                "hora": _idx(cab, COL_HORA),
             }
             lista = []
             for nfila, fila in _filas_datos(ws):
@@ -304,6 +306,7 @@ class ExcelStore:
                     "num_candidato": _valor(fila, i["numc"]),
                     "estado": estado,
                     "anotacion": _valor(fila, i["anot"]),
+                    "hora": _valor(fila, i["hora"]),
                     "adjudicado": estado == ESTADO_ADJUDICADO,
                 })
         finally:
@@ -321,6 +324,17 @@ class ExcelStore:
         """Estado completo para la API (panel y pantalla)."""
         puestos = self.puestos()
         adjudicados = sum(1 for x in puestos if x["adjudicado"])
+
+        # Enriquecer cada puesto asignado con el nombre de pila (sin apellidos) para la
+        # pantalla de proyección. Se busca por nº de candidato; si no, primer token.
+        por_numero = {str(c["numero"]): c["nombre_pila"] for c in self.candidatos()}
+        for x in puestos:
+            if x["asignado_a"]:
+                x["nombre_pila"] = (por_numero.get(str(x["num_candidato"]))
+                                    or x["asignado_a"].split()[0])
+            else:
+                x["nombre_pila"] = ""
+
         return {
             "puestos": puestos,
             "estados": self.config.get("estados", ESTADOS),
@@ -378,7 +392,7 @@ class ExcelStore:
                 return False
             if not self._editar_puesto(puesto_id, lambda ws, cab: (
                     _escribe(ws, int(puesto_id), cab, self.config["puestos"].get("col_estado"), estado),
-                    _escribe(ws, int(puesto_id), cab, COL_HORA, datetime.now().strftime("%H:%M")))):
+                    _escribe(ws, int(puesto_id), cab, COL_HORA, datetime.now().strftime("%H:%M:%S")))):
                 return False
             # Reflejar el estado también en el candidato asignado.
             if puesto.get("num_candidato"):
@@ -435,7 +449,7 @@ class ExcelStore:
             _escribe(ws, f, cab, p.get("col_nombre_acepta"), cand["nombre"])
             _escribe(ws, f, cab, p.get("col_estado"), estado)
             _escribe(ws, f, cab, COL_NUM, cand["numero"])
-            _escribe(ws, f, cab, COL_HORA, datetime.now().strftime("%H:%M"))
+            _escribe(ws, f, cab, COL_HORA, datetime.now().strftime("%H:%M:%S"))
             if tiene_col_dni:
                 _escribe(ws, f, cab, p.get("col_dni_acepta"), cand["dni"])
             else:

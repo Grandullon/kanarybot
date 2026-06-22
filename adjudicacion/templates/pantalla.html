@@ -3,54 +3,114 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Adjudicación · Pantalla</title>
+  <title>Selección enfermería · Pantalla</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
   <style>
-    body { background: #0f2138; color: #fff; }
-    header.barra { background: #0b1a2c; }
-    header.barra h1 { font-size: 26px; }
-    .contador { background: #16304f; border-color: #244a73; color: #fff; min-width: 150px; }
-    .contador .num { font-size: 46px; }
-    .contador .etq { color: #9fc3e8; font-size: 14px; }
-    .contador.ok .num { color: #7ee08a; }
-    .contador.pend .num { color: #ffd27d; }
-    .panel-pantalla { padding: 16px 26px; display: grid; grid-template-columns: 3fr 2fr; gap: 26px; }
-    @media (max-width: 1100px) { .panel-pantalla { grid-template-columns: 1fr; } }
-    h2.seccion { font-size: 24px; margin: 4px 0 10px; }
-    h2.seccion.pend { color: #ffd27d; }
-    h2.seccion.adj { color: #7ee08a; }
-    table { background: transparent; }
-    th { background: #16304f; color: #9fc3e8; font-size: 16px; border-color: #244a73; }
-    td { color: #eaf2fb; font-size: 19px; border-color: #1d3a5c; }
-    tr.adj td b { color: #aef5b6; }
-    .grupo { margin-bottom: 18px; }
-    .grupo h3 { font-size: 20px; color: #cfe2ff; margin: 6px 0; display: flex; justify-content: space-between; border-bottom: 2px solid #244a73; padding-bottom: 4px; }
-    .quedan { background: #ffd27d; color: #3a2c00; border-radius: 999px; padding: 1px 12px; font-size: 16px; font-weight: 700; }
-    .pill { font-size: 15px; }
-    .reloj { font-size: 16px; color: #9fc3e8; }
-    .vacio { color: #9fc3e8; font-size: 18px; }
+    /* ---- Tema claro, alto contraste, pensado para proyector ---- */
+    :root {
+      --verde: #1b8a3a;   --verde-bg: #e7f6ec;   --verde-bd: #8bd6a2;
+      --rojo:  #c62828;   --rojo-bg:  #fdeaea;    --rojo-bd:  #eaa3a3;
+      --azul:  #14406b;   --azul2: #1e5a96;
+      --tinta: #16242e;   --suave: #5a6b78;       --linea: #d7dee5;
+    }
+    body { background: #f4f7fa; color: var(--tinta); margin: 0; }
+
+    header.cab {
+      background: linear-gradient(180deg,#ffffff 0%, #eef3f8 100%);
+      border-bottom: 4px solid var(--azul);
+      padding: 10px 26px; display: flex; align-items: center; gap: 26px; flex-wrap: wrap;
+    }
+    header.cab .titulo { display:flex; flex-direction:column; }
+    header.cab h1 { font-size: 30px; margin: 0; color: var(--azul); letter-spacing:.5px; }
+    header.cab .sub { font-size: 14px; color: var(--suave); }
+    .cab .relleno { flex: 1; }
+
+    .contadores { display: flex; gap: 14px; }
+    .cont {
+      background: #fff; border: 1px solid var(--linea); border-radius: 12px;
+      padding: 8px 20px; text-align: center; min-width: 130px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.04);
+    }
+    .cont .num { font-size: 42px; font-weight: 800; line-height: 1; }
+    .cont .etq { font-size: 13px; color: var(--suave); text-transform: uppercase; letter-spacing:.5px; }
+    .cont.ofer .num { color: var(--azul); }
+    .cont.adj  .num { color: var(--rojo); }
+    .cont.pend .num { color: var(--verde); }
+    .reloj { font-size: 15px; color: var(--suave); white-space: nowrap; }
+
+    .lienzo { display: grid; grid-template-columns: 1.7fr 1fr; gap: 22px; padding: 20px 26px; }
+    @media (max-width: 1150px) { .lienzo { grid-template-columns: 1fr; } }
+    h2.sec { font-size: 22px; margin: 0 0 12px; display:flex; align-items:center; gap:10px; }
+    h2.sec .punto { width: 16px; height: 16px; border-radius: 4px; display:inline-block; }
+    h2.sec.left .punto { background: var(--verde); }
+    h2.sec.right .punto { background: var(--rojo); }
+
+    /* ---- Tablón por ofertar ---- */
+    .centro {
+      background: #fff; border: 1px solid var(--linea); border-radius: 14px;
+      padding: 14px 16px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,.05);
+    }
+    .centro.agotado { opacity: .55; }
+    .centro .cabc { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+    .centro .nomc { font-size: 23px; font-weight: 800; color: var(--azul); text-transform: uppercase; }
+    .quedan-grande {
+      font-size: 17px; font-weight: 800; color: var(--verde);
+      background: var(--verde-bg); border: 1px solid var(--verde-bd);
+      border-radius: 999px; padding: 4px 16px; white-space: nowrap;
+    }
+    .quedan-grande b { font-size: 24px; }
+    .quedan-grande.cero { color: var(--suave); background:#f1f3f5; border-color: var(--linea); }
+
+    .tipo { display:flex; align-items:center; gap: 12px; padding: 7px 0; border-top: 1px dashed var(--linea); }
+    .tipo .desc { flex: 1; font-size: 17px; }
+    .tipo .desc .det { color: var(--suave); font-size: 14px; }
+    .tipo .cuenta { font-size: 15px; color: var(--suave); white-space: nowrap; }
+    .tipo .cuenta b { color: var(--verde); font-size: 18px; }
+    .fichas { display:flex; flex-wrap: wrap; gap: 6px; max-width: 320px; }
+    .ficha { width: 26px; height: 26px; border-radius: 6px; border: 1.5px solid; }
+    .ficha.libre { background: var(--verde-bg); border-color: var(--verde-bd); }
+    .ficha.dada  { background: var(--rojo-bg);  border-color: var(--rojo-bd); position: relative; }
+    .ficha.dada::after { content:"✕"; color: var(--rojo); font-weight:800; font-size:16px;
+      position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+
+    /* ---- Feed de adjudicados ---- */
+    .feed { background:#fff; border:1px solid var(--linea); border-radius:14px; overflow:hidden; }
+    .item { display:flex; gap:12px; align-items:baseline; padding:11px 16px; border-bottom:1px solid var(--linea); }
+    .item:last-child { border-bottom:0; }
+    .item.nuevo { background: var(--verde-bg); animation: destello 1.6s ease-out 1; }
+    @keyframes destello { 0%{ background:#bdebcb; } 100%{ background: var(--verde-bg); } }
+    .item .hora { font-variant-numeric: tabular-nums; color: var(--suave); font-size: 15px; min-width: 50px; }
+    .item .nc { font-weight: 800; color: var(--rojo); font-size: 17px; min-width: 56px; }
+    .item .quien { flex: 1; }
+    .item .quien .nom { font-size: 19px; font-weight: 700; }
+    .item .quien .contr { font-size: 14px; color: var(--suave); }
+
+    .vacio { color: var(--suave); font-size: 19px; padding: 18px; text-align:center; }
   </style>
 </head>
 <body>
-  <header class="barra">
-    <h1>Adjudicación de contratos</h1>
-    <div class="contadores">
-      <div class="contador"><div class="num" id="c-total">0</div><div class="etq">Ofertados</div></div>
-      <div class="contador ok"><div class="num" id="c-asig">0</div><div class="etq">Adjudicados</div></div>
-      <div class="contador pend"><div class="num" id="c-pend">0</div><div class="etq">Por ofertar</div></div>
+  <header class="cab">
+    <div class="titulo">
+      <h1>Selección enfermería</h1>
+      <span class="sub">Adjudicación de contratos · Granada</span>
     </div>
     <div class="relleno"></div>
-    <span class="reloj">Actualizado: <span id="hora">—</span></span>
+    <div class="contadores">
+      <div class="cont ofer"><div class="num" id="c-total">0</div><div class="etq">Ofertados</div></div>
+      <div class="cont adj"><div class="num" id="c-asig">0</div><div class="etq">Adjudicados</div></div>
+      <div class="cont pend"><div class="num" id="c-pend">0</div><div class="etq">Por ofertar</div></div>
+    </div>
+    <div class="reloj">Actualizado<br><span id="hora">—</span></div>
   </header>
 
-  <div class="panel-pantalla">
+  <div class="lienzo">
     <div>
-      <h2 class="seccion pend">📋 Puestos por ofertar</h2>
+      <h2 class="sec left"><span class="punto"></span>Puestos por ofertar</h2>
       <div id="pendientes"></div>
     </div>
     <div>
-      <h2 class="seccion adj">✅ Adjudicados</h2>
-      <div id="adjudicados"></div>
+      <h2 class="sec right"><span class="punto"></span>Se va cogiendo (por orden)</h2>
+      <div class="feed" id="adjudicados"></div>
     </div>
   </div>
 
