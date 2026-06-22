@@ -78,20 +78,42 @@
     .quedan-grande b { font-size: clamp(20px,1.8vw,26px); }
     .quedan-grande.cero { color: var(--suave); background:#f1f3f5; border-color: var(--linea); }
 
-    .tipo { display:flex; align-items:center; gap: 12px; padding: 7px 0; border-top: 1px dashed var(--linea); }
-    .tipo .desc { flex: 1; font-size: clamp(15px,1.3vw,19px); }
-    .tipo .desc .det { color: var(--suave); font-size: clamp(13px,1vw,15px); }
-    .tipo .cuenta { font-size: 15px; color: var(--suave); white-space: nowrap; }
-    .tipo .cuenta b { color: var(--verde); font-size: 18px; }
-    .fichas { display:flex; flex-wrap: wrap; gap: 6px; max-width: 300px; }
-    .ficha { width: 26px; height: 26px; border-radius: 6px; border: 1.5px solid; }
-    .ficha.libre { background: var(--verde-bg); border-color: var(--verde-bd); }
-    .ficha.dada  { background: var(--rojo-bg);  border-color: var(--rojo-bd); position: relative; }
-    .ficha.dada::after { content:"✕"; color: var(--rojo); font-weight:800; font-size:16px;
-      position:absolute; inset:0; display:flex; align-items:center; justify-content:center; }
+    .tipo { padding: 8px 0; border-top: 1px dashed var(--linea); }
+    .tipo .lin1 { display:flex; align-items:baseline; gap:10px; }
+    .tipo .durh { font-weight: 800; font-size: clamp(16px,1.5vw,21px); color: var(--tinta); }
+    .tipo .cuenta { margin-left:auto; font-size: clamp(14px,1.1vw,16px); color: var(--suave); white-space: nowrap; }
+    .tipo .cuenta b { color: var(--verde); font-size: clamp(17px,1.5vw,21px); }
+    .tipo .det { color: var(--suave); font-size: clamp(13px,1vw,15px); margin: 2px 0 6px; }
+    .urgente { background: #fff3e0; color: #b35400; border: 1px solid #f0b878; border-radius: 999px;
+      padding: 1px 10px; font-size: 13px; font-weight: 800; white-space: nowrap; animation: pulso 1.2s ease-in-out infinite; }
+    @keyframes pulso { 0%,100%{ opacity:1; } 50%{ opacity:.45; } }
+    .barra-tipo { display:flex; height: 12px; border-radius: 999px; overflow:hidden; background:#eef1f4; }
+    .barra-tipo .seg { display:block; }
+    .barra-tipo .seg.libre { background: var(--verde); }
+    .barra-tipo .seg.dada  { background: var(--rojo-bd); }
+    .quedan-grande.urge { color:#b35400; background:#fff3e0; border-color:#f0b878; animation: pulso 1.2s ease-in-out infinite; }
+
+    /* ---- Banner del último cogido ---- */
+    #ultimo { flex: 0 0 auto; }
+    .hero { background: linear-gradient(180deg,#fff 0%, #fdeaea 100%); border:2px solid var(--rojo-bd);
+      border-radius:14px; padding:12px 16px; margin-bottom:10px; }
+    .hero.destacar { animation: heroflash 1.4s ease-out 1; }
+    @keyframes heroflash { 0%{ box-shadow:0 0 0 0 rgba(198,40,40,.5); } 100%{ box-shadow:0 0 0 14px rgba(198,40,40,0); } }
+    .hero-tag { font-size: clamp(12px,1vw,14px); color: var(--rojo); font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+    .hero-cuerpo { display:flex; align-items:baseline; gap:12px; margin:2px 0; }
+    .hero-nc { font-weight:800; color:var(--rojo); font-size: clamp(20px,2vw,30px); }
+    .hero-nom { font-weight:800; font-size: clamp(22px,2.3vw,34px); }
+    .hero-contr { color: var(--suave); font-size: clamp(14px,1.1vw,17px); }
+
+    /* ---- Contadores por centro ---- */
+    .chips { flex: 0 0 auto; display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px; }
+    .chip { background:#fff; border:1px solid var(--linea); border-radius:999px; padding:3px 12px;
+      font-size: clamp(12px,1vw,15px); color: var(--azul); }
+    .chip b { color: var(--rojo); margin-left:2px; }
 
     /* ---- Feed de adjudicados ---- */
     .feed { background:#fff; border:1px solid var(--linea); border-radius:14px; }
+    .item .seq { color: var(--suave); font-weight:800; font-size:14px; min-width:38px; }
     .item { display:flex; gap:12px; align-items:baseline; padding:11px 16px; border-bottom:1px solid var(--linea); }
     .item:last-child { border-bottom:0; }
     .item.nuevo { background: var(--verde-bg); animation: destello 1.6s ease-out 1; }
@@ -130,6 +152,8 @@
     </div>
     <div class="col">
       <h2 class="sec right"><span class="punto"></span>Se va cogiendo <span class="cuantos" id="cuantos"></span></h2>
+      <div id="ultimo"></div>
+      <div class="chips" id="porcentro"></div>
       <div class="scroll"><div class="feed" id="adjudicados"></div></div>
     </div>
   </div>

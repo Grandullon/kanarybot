@@ -1,26 +1,51 @@
 // Pantalla de proyección (solo lectura). Se autorrefresca cada 3 segundos.
-// Izquierda: TABLÓN "por ofertar" por centro, con fichas verde=libre / rojo=dada.
-// Derecha:   FEED "se va cogiendo (por orden)", lo más reciente arriba.
+// Izquierda: TABLÓN "por ofertar" por centro (barra + "X de Y", urgencia, duración humana).
+// Derecha:   "LO COGIDO" — banner del último, contadores por centro y feed numerado.
+// Pensada para proyector sin ratón: ambas columnas se auto-desplazan solas.
 
 const $ = (id) => document.getElementById(id);
 
 function esc(s) {
   return String(s == null ? "" : s).replace(/[&<>"']/g, m => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[m]));
 }
-function fechas(p) {
-  if (!p.fecha_inicio && !p.fecha_fin) return "";
-  return `${esc(p.fecha_inicio)} – ${esc(p.fecha_fin)}`;
-}
 function claveCentro(c) { return (c || "(Sin centro)").trim().toLowerCase().replace(/\s+/g, " "); }
 function hhmm(h) { return h ? String(h).slice(0, 5) : ""; }
-// Duración robusta: vacío -> ""; si es número -> "N días"; si es texto -> tal cual.
-function dur(p) {
+
+const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
+function parseFecha(f) {
+  const m = String(f || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (!m) return null;
+  return { d: +m[1], mes: +m[2], y: +m[3] };
+}
+// Duración en lenguaje natural: número de días -> "N meses"/"1 mes"; texto -> tal cual.
+function mesesHumano(p) {
   const v = String(p.duracion == null ? "" : p.duracion).trim();
   if (!v) return "";
-  return /^\d+$/.test(v) ? `${v} días` : v;
+  if (!/^\d+$/.test(v)) return v;                 // ya viene como texto ("2 meses")
+  const meses = Math.max(1, Math.round(+v / 30));
+  return meses === 1 ? "1 mes" : `${meses} meses`;
+}
+// Rango de meses a partir de las fechas: "jul–ago" (añade año si difiere).
+function rangoMeses(p) {
+  const a = parseFecha(p.fecha_inicio), b = parseFecha(p.fecha_fin);
+  if (!a || !b) return "";
+  const ma = MESES[a.mes - 1] || "", mb = MESES[b.mes - 1] || "";
+  if (!ma || !mb) return "";
+  if (a.y !== b.y) return `${ma} ${a.y} – ${mb} ${b.y}`;
+  return ma === mb ? ma : `${ma}–${mb}`;
+}
+function turnoIcon(t) {
+  const n = (t || "").toLowerCase();
+  if (/noche|nocturn/.test(n)) return "🌙";
+  if (/tarde/.test(n)) return "🌇";
+  if (/rotat/.test(n)) return "🔄";
+  if (/diurn|mañana|manana|dia|día/.test(n)) return "☀️";
+  return "";
 }
 
-let vistos = null;  // ids de adjudicados ya mostrados (para resaltar los nuevos)
+let vistos = null;       // ids de adjudicados ya mostrados (resaltar nuevos)
+let ultimoId = null;     // id del último cogido (para destello del banner)
+let sigTablon = "", sigFeed = "";  // firmas para no reescribir (y no romper el autoscroll)
 
 async function refrescar() {
   let d;
@@ -36,16 +61,15 @@ async function refrescar() {
   $("barra").style.width = pct + "%";
 
   pintarTablon(d.puestos);
-  pintarFeed(d.puestos.filter(p => p.adjudicado));
+  pintarCogido(d.puestos.filter(p => p.adjudicado));
 }
 
-// ----- Tablón "por ofertar": todos los puestos, agrupados centro -> tipo -----
+// ===================== TABLÓN "POR OFERTAR" =====================
 function pintarTablon(puestos) {
   if (!puestos.length) {
-    $("pendientes").innerHTML = '<p class="vacio">No hay puestos cargados.</p>';
+    if (sigTablon !== "vacio") { $("pendientes").innerHTML = '<p class="vacio">No hay puestos cargados.</p>'; sigTablon = "vacio"; }
     return;
   }
-  // Agrupa por centro (normalizando mayúsculas/espacios) y, dentro, por tipo de contrato.
   const centros = {};
   puestos.forEach(p => {
     const k = claveCentro(p.centro);
@@ -56,32 +80,37 @@ function pintarTablon(puestos) {
     if (p.adjudicado) { t.dadas++; } else { t.libres++; c.quedan++; }
   });
 
-  // Ordena: primero centros con plazas libres, luego agotados; alfabético.
   const orden = Object.values(centros).sort((a, b) =>
     (a.quedan === 0) - (b.quedan === 0) || a.nombre.localeCompare(b.nombre));
 
-  if (orden.every(c => c.quedan === 0)) {
-    $("pendientes").innerHTML = '<p class="vacio">No quedan puestos por ofertar. 🎉</p>'
-      + orden.map(tarjetaCentro).join("");
-    return;
-  }
-  $("pendientes").innerHTML = orden.map(tarjetaCentro).join("");
+  // Firma: solo redibuja si cambian conteos (así el autoscroll no se reinicia en cada refresco).
+  const sig = orden.map(c => c.nombre + ":" + Object.values(c.tipos).map(t => t.libres + "/" + t.dadas).join(",")).join("|");
+  if (sig === sigTablon) return;
+  sigTablon = sig;
+
+  const aviso = orden.every(c => c.quedan === 0) ? '<p class="vacio">No quedan puestos por ofertar. 🎉</p>' : "";
+  $("pendientes").innerHTML = aviso + orden.map(tarjetaCentro).join("");
 }
 
 function tarjetaCentro(c) {
   const tipos = Object.values(c.tipos).map(t => {
-    const p = t.p;
-    const fichas = '<span class="ficha libre"></span>'.repeat(t.libres)
-                 + '<span class="ficha dada"></span>'.repeat(t.dadas);
-    const det = [fechas(p), p.turno].filter(Boolean).map(esc).join(" · ");
+    const p = t.p, total = t.libres + t.dadas;
+    const libPct = total ? (t.libres / total * 100) : 0;
+    const det = [rangoMeses(p), (turnoIcon(p.turno) + " " + (p.turno || "")).trim()].filter(s => s && s.trim()).map(esc).join(" · ");
+    const urge = (t.libres > 0 && t.libres <= 2) ? `<span class="urgente">¡Últimas ${t.libres}!</span>` : "";
     return `<div class="tipo">
-        <div class="desc"><b>${esc(dur(p))}</b>${det ? `<div class="det">${det}</div>` : ""}</div>
-        <div class="fichas">${fichas}</div>
-        <div class="cuenta">Quedan <b>${t.libres}</b> de ${t.libres + t.dadas}</div>
+        <div class="lin1">
+          <span class="durh">${esc(mesesHumano(p))}</span>
+          <span class="cuenta">Quedan <b>${t.libres}</b> de ${total}</span>
+          ${urge}
+        </div>
+        ${det ? `<div class="det">${det}</div>` : ""}
+        <div class="barra-tipo"><span class="seg libre" style="flex:${t.libres}"></span><span class="seg dada" style="flex:${t.dadas}"></span></div>
       </div>`;
   }).join("");
+  const urgenteCentro = (c.quedan > 0 && c.quedan <= 2) ? "urge" : "";
   const badge = c.quedan > 0
-    ? `<span class="quedan-grande">Quedan <b>${c.quedan}</b></span>`
+    ? `<span class="quedan-grande ${urgenteCentro}">Quedan <b>${c.quedan}</b></span>`
     : `<span class="quedan-grande cero">Completo</span>`;
   return `<div class="centro ${c.quedan === 0 ? "agotado" : ""}">
       <div class="cabc"><span class="nomc">${esc(c.nombre)}</span>${badge}</div>
@@ -89,37 +118,90 @@ function tarjetaCentro(c) {
     </div>`;
 }
 
-// ----- Feed "se va cogiendo": adjudicados, lo más reciente arriba -----
-function pintarFeed(lista) {
+// ===================== "LO COGIDO" =====================
+function contratoTxt(p) {
+  return [p.centro, mesesHumano(p), rangoMeses(p)].filter(Boolean).map(esc).join(" · ");
+}
+
+function pintarCogido(lista) {
   $("cuantos").textContent = lista.length ? `(${lista.length})` : "";
+
   if (!lista.length) {
-    $("adjudicados").innerHTML = '<p class="vacio">Aún no se ha cogido ningún contrato.</p>';
-    vistos = new Set();
+    if (sigFeed !== "vacio") {
+      $("ultimo").innerHTML = "";
+      $("porcentro").innerHTML = "";
+      $("adjudicados").innerHTML = '<p class="vacio">Aún no se ha cogido ningún contrato.</p>';
+      sigFeed = "vacio"; vistos = new Set(); ultimoId = null;
+    }
     return;
   }
-  // Orden cronológico por hora (HH:MM:SS); lo más reciente arriba.
-  const orden = lista.slice().sort((a, b) =>
-    String(b.hora).localeCompare(String(a.hora)) || (b.id - a.id));
 
-  // La primera carga no debe destellar todo; a partir de ahí, resalta lo nuevo.
+  // Orden cronológico ascendente para numerar #1..#N de forma estable.
+  const asc = lista.slice().sort((a, b) =>
+    String(a.hora).localeCompare(String(b.hora)) || (a.id - b.id));
+  asc.forEach((p, i) => { p._seq = i + 1; });
+  const ultimo = asc[asc.length - 1];
+
+  // ----- Banner del último (siempre visible, fuera del scroll) -----
+  if (ultimo.id !== ultimoId) {
+    $("ultimo").innerHTML = `
+      <div class="hero destacar">
+        <div class="hero-tag">Último contrato cogido · ${esc(hhmm(ultimo.hora))}</div>
+        <div class="hero-cuerpo">
+          <span class="hero-nc">Nº${esc(ultimo.num_candidato)}</span>
+          <span class="hero-nom">${esc(ultimo.nombre_pila || ultimo.asignado_a)}</span>
+        </div>
+        <div class="hero-contr">${contratoTxt(ultimo)}</div>
+      </div>`;
+    ultimoId = ultimo.id;
+  }
+
+  // ----- Contadores por centro -----
+  const porC = {};
+  asc.forEach(p => { const k = claveCentro(p.centro); (porC[k] = porC[k] || { nombre: (p.centro || "—").trim(), n: 0 }).n++; });
+  $("porcentro").innerHTML = Object.values(porC).sort((a, b) => b.n - a.n || a.nombre.localeCompare(b.nombre))
+    .map(c => `<span class="chip">${esc(c.nombre)} <b>${c.n}</b></span>`).join("");
+
+  // ----- Feed numerado, lo más reciente arriba -----
+  const sig = asc.map(p => p.id + ":" + p.hora).join("|");
   const primera = vistos === null;
   if (primera) vistos = new Set();
 
-  const html = orden.map(p => {
-    const nuevo = !primera && !vistos.has(p.id);
-    const contrato = [p.centro, dur(p), fechas(p)].filter(Boolean).map(esc).join(" · ");
-    return `<div class="item ${nuevo ? "nuevo" : ""}">
-        <span class="hora">${esc(hhmm(p.hora))}</span>
-        <span class="nc">Nº${esc(p.num_candidato)}</span>
-        <span class="quien">
-          <span class="nom">${esc(p.nombre_pila || p.asignado_a)}</span>
-          <span class="contr">${contrato}</span>
-        </span>
-      </div>`;
-  }).join("");
-  $("adjudicados").innerHTML = html;
-  vistos = new Set(orden.map(p => p.id));
+  if (sig !== sigFeed) {
+    const desc = asc.slice().reverse();
+    $("adjudicados").innerHTML = desc.map(p => {
+      const nuevo = !primera && !vistos.has(p.id);
+      return `<div class="item ${nuevo ? "nuevo" : ""}">
+          <span class="seq">#${p._seq}</span>
+          <span class="hora">${esc(hhmm(p.hora))}</span>
+          <span class="nc">Nº${esc(p.num_candidato)}</span>
+          <span class="quien">
+            <span class="nom">${esc(p.nombre_pila || p.asignado_a)}</span>
+            <span class="contr">${contratoTxt(p)}</span>
+          </span>
+        </div>`;
+    }).join("");
+    sigFeed = sig;
+    vistos = new Set(asc.map(p => p.id));
+  }
+}
+
+// ===================== AUTO-DESPLAZAMIENTO =====================
+// Desplaza despacio el contenedor cuando su contenido desborda; pausa arriba/abajo y vuelve.
+function autoScroll(el) {
+  const PASO = 1, INTERVALO = 45, PAUSA = 2500;
+  let dir = 1, pausaHasta = 0;
+  setInterval(() => {
+    if (!el) return;
+    const max = el.scrollHeight - el.clientHeight;
+    if (max <= 4) { el.scrollTop = 0; return; }   // no desborda
+    if (Date.now() < pausaHasta) return;
+    el.scrollTop += dir * PASO;
+    if (dir > 0 && el.scrollTop >= max - 1) { dir = -1; pausaHasta = Date.now() + PAUSA; }
+    else if (dir < 0 && el.scrollTop <= 1) { dir = 1; pausaHasta = Date.now() + PAUSA; }
+  }, INTERVALO);
 }
 
 refrescar();
 setInterval(refrescar, 3000);
+document.querySelectorAll(".scroll").forEach(autoScroll);
