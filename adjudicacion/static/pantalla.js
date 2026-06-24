@@ -11,12 +11,6 @@ function esc(s) {
 function claveCentro(c) { return (c || "(Sin centro)").trim().toLowerCase().replace(/\s+/g, " "); }
 function hhmm(h) { return h ? String(h).slice(0, 5) : ""; }
 
-const MESES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"];
-function parseFecha(f) {
-  const m = String(f || "").match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
-  if (!m) return null;
-  return { d: +m[1], mes: +m[2], y: +m[3] };
-}
 // Duración en lenguaje natural: número de días -> "N meses"/"1 mes"; texto -> tal cual.
 function mesesHumano(p) {
   const v = String(p.duracion == null ? "" : p.duracion).trim();
@@ -24,15 +18,6 @@ function mesesHumano(p) {
   if (!/^\d+$/.test(v)) return v;                 // ya viene como texto ("2 meses")
   const meses = Math.max(1, Math.round(+v / 30));
   return meses === 1 ? "1 mes" : `${meses} meses`;
-}
-// Rango de meses a partir de las fechas: "jul–ago" (añade año si difiere).
-function rangoMeses(p) {
-  const a = parseFecha(p.fecha_inicio), b = parseFecha(p.fecha_fin);
-  if (!a || !b) return "";
-  const ma = MESES[a.mes - 1] || "", mb = MESES[b.mes - 1] || "";
-  if (!ma || !mb) return "";
-  if (a.y !== b.y) return `${ma} ${a.y} – ${mb} ${b.y}`;
-  return ma === mb ? ma : `${ma}–${mb}`;
 }
 function turnoIcon(t) {
   const n = (t || "").toLowerCase();
@@ -114,11 +99,11 @@ function tarjetaCentro(c) {
   const tipos = Object.values(c.tipos).map(t => {
     const p = t.p, total = t.libres + t.dadas;
     const ambTipo = (!unico && (p.ambito || "").trim()) ? p.ambito.trim() : "";
-    const etq = [mesesHumano(p), ambTipo, rangoMeses(p), turnoTxt(p), (p.necesidad || "").trim()]
+    const etq = [mesesHumano(p), ambTipo, fechasFull(p), turnoTxt(p), (p.necesidad || "").trim()]
       .filter(s => s && String(s).trim()).map(esc).join(" · ");
     const celdas = t.plazas.slice().sort((a, b) => a.id - b.id).map(pl => {
       const num = pl.id - 1;
-      const quien = pl.adjudicado ? " · " + (pl.nombre_pila || pl.asignado_a || "") : "";
+      const quien = pl.adjudicado ? " · " + (pl.asignado_a || pl.nombre_pila || "") : "";
       return `<span class="celda ${pl.adjudicado ? "dada" : "libre"}" title="${esc("#" + num + " · " + (pl.centro || "") + quien)}">${num}</span>`;
     }).join("");
     return `<div class="tipo">
@@ -178,7 +163,7 @@ function pintarCogido(lista) {
         <div class="hero-tag">Último contrato cogido · ${esc(hhmm(ultimo.hora))}</div>
         <div class="hero-cuerpo">
           <span class="hero-nc">Nº${esc(ultimo.num_candidato)}</span>
-          <span class="hero-nom">${esc(ultimo.nombre_pila || ultimo.asignado_a)}</span>
+          <span class="hero-nom">${esc(ultimo.asignado_a || ultimo.nombre_pila)}</span>
         </div>
         <div class="hero-contr">${heroLinea}</div>
         ${fechasFull(ultimo) ? `<div class="hero-fechas">${esc(fechasFull(ultimo))}</div>` : ""}
@@ -205,7 +190,7 @@ function pintarCogido(lista) {
           <div class="item-top">
             <span class="seq">#${p._seq}</span>
             <span class="nc">Nº${esc(p.num_candidato)}</span>
-            <span class="nom">${esc(p.nombre_pila || p.asignado_a)}</span>
+            <span class="nom">${esc(p.asignado_a || p.nombre_pila)}</span>
             <span class="hora">${esc(hhmm(p.hora))}</span>
           </div>
           ${camposContrato(p)}
