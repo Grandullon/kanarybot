@@ -87,6 +87,14 @@ def _valor(fila, idx):
     return v.strip() if isinstance(v, str) else str(v)
 
 
+def _a_float(v):
+    """Número de un texto/celda para ordenar ('12,50' -> 12.5); -inf si no es numérico."""
+    try:
+        return float(str(v).replace(",", ".").strip())
+    except (ValueError, TypeError):
+        return float("-inf")
+
+
 def _dias_entre(fini, ffin):
     """Días inclusivos entre dos fechas dd/mm/aaaa; '' si no se pueden parsear.
 
@@ -198,7 +206,7 @@ class ExcelStore:
             "col_dni": _adivina(cab, ["dni", "nif", "documento"]) or "",
             "col_letra": _adivina(cab, ["letra"]) or "",
             "col_telefono": _adivina(cab, ["tlf", "telefono", "movil"]) or "",
-            "col_puntos": _adivina(cab, ["autobaremo", "total puntos", "puntos"]) or "",
+            "col_puntos": _adivina(cab, ["total puntos"]) or _adivina(cab, ["autobaremo", "puntos"]) or "",
             "col_oferta_estado": _adivina(cab, ["oferta estado", "estado oferta"]) or "",
             "col_oferta_aceptada": _adivina(cab, ["oferta aceptada", "aceptada"]) or "",
             "col_oferta_datos": _adivina(cab, ["oferta datos", "datos oferta"]) or "",
@@ -264,6 +272,10 @@ class ExcelStore:
                 })
         finally:
             wb.close()
+
+        # Ordenar por TOTAL PUNTOS de mayor a menor (los no numéricos al final);
+        # a igualdad de puntos, por orden del listado. El nº del candidato no cambia.
+        lista.sort(key=lambda c: (-_a_float(c["puntos"]), c["numero"]))
 
         self._cache_candidatos = lista
         return lista
