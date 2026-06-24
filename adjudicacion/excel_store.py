@@ -44,6 +44,7 @@ ESTADO_ADJUDICADO = "Aceptado"  # único estado que retira el puesto de "por ofe
 COL_NUM = "Nº candidato"
 COL_DNI_AUX = "DNI candidato"
 COL_HORA = "Hora"
+COL_FECHA = "Fecha"   # fecha de comunicación de la adjudicación (dd/mm/aaaa)
 
 # Filas vacías seguidas que marcan el final de los datos (Excel reporta 1.048.576 filas).
 _RACHA_VACIAS = 80
@@ -330,6 +331,7 @@ class ExcelStore:
                 "numc": _idx(cab, COL_NUM),
                 "dniaux": _idx(cab, COL_DNI_AUX),
                 "hora": _idx(cab, COL_HORA),
+                "fechac": _idx(cab, COL_FECHA),
             }
             lista = []
             for nfila, fila in _filas_datos(ws):
@@ -352,6 +354,7 @@ class ExcelStore:
                     "estado": estado,
                     "anotacion": _valor(fila, i["anot"]),
                     "hora": _valor(fila, i["hora"]),
+                    "fecha_com": _valor(fila, i["fechac"]),
                     "adjudicado": estado == ESTADO_ADJUDICADO,
                 })
         finally:
@@ -471,6 +474,7 @@ class ExcelStore:
                 _escribe(ws, f, cab, COL_NUM, None)
                 _escribe(ws, f, cab, COL_DNI_AUX, None)
                 _escribe(ws, f, cab, COL_HORA, None)
+                _escribe(ws, f, cab, COL_FECHA, None)
 
             if not self._editar_puesto(puesto_id, acc):
                 return False
@@ -518,7 +522,9 @@ class ExcelStore:
             _escribe(ws, f, cab, col_nombre, cand["nombre"])
             _escribe(ws, f, cab, col_estado, estado)
             _escribe(ws, f, cab, COL_NUM, cand["numero"])
-            _escribe(ws, f, cab, COL_HORA, datetime.now().strftime("%H:%M:%S"))
+            ahora = datetime.now()
+            _escribe(ws, f, cab, COL_HORA, ahora.strftime("%H:%M:%S"))
+            _escribe(ws, f, cab, COL_FECHA, ahora.strftime("%d/%m/%Y"))
             if tiene_col_dni:
                 _escribe(ws, f, cab, p.get("col_dni_acepta"), cand["dni"])
             else:
@@ -529,7 +535,7 @@ class ExcelStore:
     def _editar_puesto(self, puesto_id, accion):
         p = self.config["puestos"]
         return self._editar(p["ruta"], p["hoja"], accion,
-                            extra_cols=(COL_NUM, COL_DNI_AUX, COL_HORA), congelar=True)
+                            extra_cols=(COL_NUM, COL_DNI_AUX, COL_HORA, COL_FECHA), congelar=True)
 
     def _marcar_candidato(self, cand, estado, aceptada, datos):
         c = self.config["candidatos"]

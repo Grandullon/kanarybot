@@ -108,6 +108,7 @@ function pintar() {
           </select>
           <button class="peligro" onclick="liberar(${p.id})" title="Liberar contrato">✕</button>`).join("")
         + `<button class="sec" onclick="abrirAsignar(${c.numero})">Otro contrato</button>`
+        + `<button class="sec" onclick="imprimirInforme(${c.numero})" title="Imprimir informe de adjudicación">🖨️ Informe</button>`
       : `<button onclick="abrirAsignar(${c.numero})">Asignar contrato</button>`;
     return `<tr class="${asignado ? 'asignado' : ''}">
       <td><b>${esc(c.numero)}</b></td>
@@ -134,6 +135,69 @@ async function liberar(id) {
   const d = await api("/api/liberar", postJSON({ puesto_id: id }));
   if (!d.ok) aviso(d.error);
   cargar();
+}
+
+// ---------- Informe de adjudicación (imprimible) ----------
+
+function imprimirInforme(numero) {
+  const c = (ESTADO.candidatos || []).find(x => String(x.numero) === String(numero));
+  if (!c) return;
+  const ps = puestosDe(c);
+  if (!ps.length) { aviso("Este candidato aún no tiene contrato asignado."); return; }
+  const hoy = new Date().toLocaleDateString("es-ES");
+
+  const bloques = ps.map(p => {
+    const carac = [
+      ["Centro", p.centro],
+      ["Ámbito", p.ambito],
+      ["Duración", p.duracion ? `${p.duracion} días` : ""],
+      ["Fechas", (p.fecha_inicio || p.fecha_fin) ? `${p.fecha_inicio} – ${p.fecha_fin}` : ""],
+      ["Turno", p.turno],
+      ["Necesidad", p.necesidad],
+      ["Estado", p.estado],
+    ].filter(([, v]) => v && String(v).trim());
+    const filas = carac.map(([k, v]) => `<tr><th>${esc(k)}</th><td>${esc(v)}</td></tr>`).join("");
+    const fechaCom = p.fecha_com || hoy;
+    const hora = p.hora ? ` a las ${esc(String(p.hora).slice(0, 5))}` : "";
+    return `<h2>Contrato adjudicado</h2>
+      <table class="t">${filas}</table>
+      <p class="com">Comunicado el <b>${esc(fechaCom)}</b>${hora}.</p>`;
+  }).join("");
+
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
+    <title>Informe de adjudicación · Nº${esc(c.numero)}</title>
+    <style>
+      body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#16242e; margin:32px; }
+      h1 { font-size:22px; margin:0 0 4px; }
+      .sub { color:#5a6b78; margin:0 0 22px; font-size:13px; }
+      h2 { font-size:15px; margin:22px 0 8px; color:#14406b; border-bottom:2px solid #14406b; padding-bottom:3px; }
+      table.t { border-collapse:collapse; width:100%; }
+      table.t th, table.t td { text-align:left; padding:6px 10px; border-bottom:1px solid #e3e8ee; font-size:14px; vertical-align:top; }
+      table.t th { width:170px; color:#5a6b78; font-weight:600; }
+      .com { margin:10px 0 0; font-size:14px; }
+      .firmas { display:flex; gap:60px; margin-top:60px; }
+      .firmas div { flex:1; border-top:1px solid #888; padding-top:6px; font-size:12px; color:#5a6b78; text-align:center; }
+      @media print { body { margin:14mm; } button { display:none; } }
+    </style></head>
+    <body onload="window.focus()">
+      <h1>Informe de adjudicación de contrato</h1>
+      <p class="sub">Acto de selección · Generado el ${esc(hoy)}</p>
+      <h2>Datos del candidato</h2>
+      <table class="t">
+        <tr><th>Candidato</th><td>Nº ${esc(c.numero)} · <b>${esc(c.nombre)}</b></td></tr>
+        <tr><th>DNI</th><td>${esc(c.dni)}</td></tr>
+        ${c.telefono ? `<tr><th>Teléfono</th><td>${esc(c.telefono)}</td></tr>` : ""}
+      </table>
+      ${bloques}
+      <div class="firmas"><div>Firma del responsable</div><div>Firma del candidato</div></div>
+      <p style="margin-top:24px"><button onclick="window.print()">🖨️ Imprimir</button></p>
+    </body></html>`;
+
+  const w = window.open("", "_blank", "width=820,height=920");
+  if (!w) { aviso("El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes para localhost."); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { try { w.print(); } catch (e) {} }, 350);
 }
 
 // ---------- Modal: elegir contrato para el candidato ----------
