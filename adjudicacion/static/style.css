@@ -77,6 +77,30 @@ tr.asignado { background: var(--verde-fondo); }
 .pill.No.contesta, .pill[data-e="No contesta"] { background: #fff3e0; color: var(--ambar); }
 .pill[data-e="Renuncia"] { background: #ffebee; color: var(--rojo); }
 
+/* Pestañas de vista (por candidato / por centro) */
+.tabs { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+.tabs .relleno { flex: 1; }
+button.tab {
+  background: #fff; color: var(--azul); border: 1px solid var(--borde);
+  border-bottom: 2px solid transparent; border-radius: 8px 8px 0 0; font-weight: 600;
+}
+button.tab:hover { background: var(--gris-fondo); }
+button.tab.activa { background: var(--azul); color: #fff; border-color: var(--azul); }
+
+/* Vista por centro */
+.centros-cont { display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 250px); overflow: auto; padding-right: 4px; }
+.centro-card { border: 1px solid var(--borde); border-radius: 10px; background: #fff; overflow: hidden; }
+.centro-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--gris-fondo); border-bottom: 1px solid var(--borde); }
+.centro-head h3 { margin: 0; font-size: 16px; color: var(--azul); flex: 0 1 auto; }
+.centro-cuenta { font-size: 13px; font-weight: 700; color: var(--ambar); white-space: nowrap; }
+.centro-cuenta.full { color: var(--verde); }
+.centro-head .barra-mini { flex: 1; height: 8px; background: #e3e8ee; border-radius: 999px; overflow: hidden; min-width: 60px; }
+.centro-head .barra-mini span { display: block; height: 100%; background: var(--verde); }
+.centro-head button { margin-left: auto; padding: 5px 10px; font-size: 13px; }
+.centro-tabla th { position: static; }
+.centro-tabla tr.fila-libre td { color: var(--gris); background: #fcfcfd; }
+.centro-tabla .libre-tag { color: var(--ambar); font-weight: 600; font-size: 12px; }
+
 /* Modal */
 .fondo-modal {
   position: fixed; inset: 0; background: rgba(0,0,0,.45);

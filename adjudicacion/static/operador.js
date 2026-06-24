@@ -5,6 +5,8 @@ let ESTADO = { puestos: [], candidatos: [], estados: [], resumen: {} };
 let POR_CAND = {};         // num_candidato -> [puestos asignados]
 let CAND_ACTUAL = null;    // candidato cuyo contrato se está eligiendo en el modal
 let PUESTO_SELECC = null;  // contrato elegido en el modal
+let VISTA = 'cand';        // 'cand' (por candidato) | 'centro' (por centro)
+let GRUPOS = [];           // [ [centro, [puestos...]], ... ] de la última vista por centro
 
 const $ = (id) => document.getElementById(id);
 
@@ -111,7 +113,84 @@ function candidatosFiltrados() {
   });
 }
 
+function cambiarVista(v) {
+  VISTA = v;
+  $("tab-cand").classList.toggle("activa", v === 'cand');
+  $("tab-centro").classList.toggle("activa", v === 'centro');
+  $("vista-cand").style.display = v === 'cand' ? "" : "none";
+  $("vista-centro").style.display = v === 'centro' ? "" : "none";
+  $("filtro-cestado").style.display = v === 'cand' ? "" : "none";
+  $("btn-imp-centros").style.display = v === 'centro' ? "" : "none";
+  $("filtro").placeholder = v === 'cand'
+    ? "Buscar candidato (nº, nombre o DNI…)"
+    : "Buscar centro o persona asignada…";
+  pintar();
+}
+
 function pintar() {
+  if (VISTA === 'centro') pintarCentros();
+  else pintarCandidatos();
+}
+
+// ---------- Vista por centro ----------
+
+function agruparPorCentro() {
+  const mapa = new Map();
+  (ESTADO.puestos || []).forEach(p => {
+    const c = (p.centro || "").trim() || "(Sin centro)";
+    if (!mapa.has(c)) mapa.set(c, []);
+    mapa.get(c).push(p);
+  });
+  for (const ps of mapa.values()) ps.sort((a, b) => a.id - b.id);
+  return [...mapa.entries()].sort((a, b) => a[0].localeCompare(b[0], 'es'));
+}
+
+function pintarCentros() {
+  GRUPOS = agruparPorCentro();
+  const txt = $("filtro").value.trim().toLowerCase();
+  let totC = 0, cubC = 0;
+  const cards = GRUPOS.map(([centro, ps], i) => {
+    const cubiertas = ps.filter(p => p.adjudicado).length;
+    totC += ps.length; cubC += cubiertas;
+    if (txt) {
+      const hay = centro.toLowerCase().includes(txt)
+        || ps.some(p => `${p.num_candidato || ""} ${p.asignado_a || ""}`.toLowerCase().includes(txt));
+      if (!hay) return "";
+    }
+    const pct = ps.length ? Math.round(cubiertas / ps.length * 100) : 0;
+    const filas = ps.map(p => {
+      const persona = p.num_candidato
+        ? `<b>Nº${esc(p.num_candidato)}</b> · ${esc(p.asignado_a || "")}`
+        : '<span class="libre-tag">libre</span>';
+      return `<tr class="${p.adjudicado ? '' : 'fila-libre'}">
+        <td class="mini">#${esc(p.id - 1)}</td>
+        <td>${esc(p.ambito || p.necesidad || "—")}</td>
+        <td class="mini">${fechas(p) || "—"}</td>
+        <td class="mini">${esc(p.turno || "")}</td>
+        <td>${p.adjudicado ? `<span class="pill" data-e="${esc(p.estado)}">${esc(p.estado)}</span>` : ""}</td>
+        <td>${persona}</td>
+      </tr>`;
+    }).join("");
+    return `<div class="centro-card">
+      <div class="centro-head">
+        <h3>${esc(centro)}</h3>
+        <span class="centro-cuenta${cubiertas === ps.length ? ' full' : ''}">Cubiertas ${cubiertas}/${ps.length}</span>
+        <div class="barra-mini"><span style="width:${pct}%"></span></div>
+        <button class="sec" onclick="imprimirCentro(${i})" title="Imprimir resumen de este centro">🖨️ Imprimir</button>
+      </div>
+      <table class="centro-tabla">
+        <thead><tr><th>#</th><th>Ámbito / Necesidad</th><th>Fechas</th><th>Turno</th><th>Estado</th><th>Persona asignada</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>
+    </div>`;
+  }).join("");
+  $("cand-cuenta").textContent = `Centros ${GRUPOS.length} · Cubiertas ${cubC}/${totC}`;
+  $("centros").innerHTML = cards || '<div class="mini" style="padding:20px">Sin centros que coincidan con la búsqueda.</div>';
+}
+
+// ---------- Vista por candidato ----------
+
+function pintarCandidatos() {
   const total = (ESTADO.candidatos || []).length;
   const asignados = (ESTADO.candidatos || []).filter(c => puestosDe(c).length > 0).length;
   $("cand-cuenta").textContent = `Asignados ${asignados} / ${total}`;
@@ -229,6 +308,71 @@ function imprimirInforme(numero) {
     </body></html>`;
 
   const w = window.open("", "_blank", "width=820,height=920");
+  if (!w) { aviso("El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes para localhost."); return; }
+  w.document.write(html);
+  w.document.close();
+  setTimeout(() => { try { w.print(); } catch (e) {} }, 350);
+}
+
+// ---------- Informe por centro (imprimible) ----------
+
+function imprimirCentro(i) {
+  const g = GRUPOS[i];
+  if (!g) return;
+  imprimirResumenCentros([g]);
+}
+
+function imprimirTodosCentros() {
+  imprimirResumenCentros(agruparPorCentro());
+}
+
+function imprimirResumenCentros(grupos) {
+  if (!grupos.length) { aviso("No hay centros que imprimir."); return; }
+  const hoy = new Date().toLocaleDateString("es-ES");
+  let tot = 0, cub = 0;
+
+  const secciones = grupos.map(([centro, ps]) => {
+    const c = ps.filter(p => p.adjudicado).length;
+    tot += ps.length; cub += c;
+    const filas = ps.map(p => `<tr>
+        <td>#${esc(p.id - 1)}</td>
+        <td>${esc(p.ambito || p.necesidad || "")}</td>
+        <td>${esc(fechas(p))}</td>
+        <td>${esc(p.turno || "")}</td>
+        <td>${esc(p.adjudicado ? p.estado : "")}</td>
+        <td>${p.num_candidato ? "Nº" + esc(p.num_candidato) + " · " + esc(p.asignado_a || "") : "—"}</td>
+        <td>${p.num_candidato ? esc(p.dni_asignado || "") : ""}</td>
+      </tr>`).join("");
+    return `<h2>${esc(centro)} <span class="cnt">— cubiertas ${c}/${ps.length}</span></h2>
+      <table class="t">
+        <thead><tr><th>#</th><th>Ámbito / Necesidad</th><th>Fechas</th><th>Turno</th><th>Estado</th><th>Persona asignada</th><th>DNI</th></tr></thead>
+        <tbody>${filas}</tbody>
+      </table>`;
+  }).join("");
+
+  const titulo = grupos.length === 1 ? esc(grupos[0][0]) : "Resumen por centro";
+  const html = `<!doctype html><html lang="es"><head><meta charset="utf-8">
+    <title>${titulo} · Adjudicación</title>
+    <style>
+      body { font-family: -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:#16242e; margin:28px; }
+      h1 { font-size:21px; margin:0 0 4px; }
+      .sub { color:#5a6b78; margin:0 0 18px; font-size:13px; }
+      h2 { font-size:15px; margin:22px 0 6px; color:#14406b; }
+      h2 .cnt { color:#5a6b78; font-weight:500; font-size:13px; }
+      table.t { border-collapse:collapse; width:100%; margin-bottom:6px; }
+      table.t th, table.t td { text-align:left; padding:5px 8px; border-bottom:1px solid #e3e8ee; font-size:12.5px; vertical-align:top; }
+      table.t thead th { background:#f4f7fb; color:#14406b; border-bottom:2px solid #cdd8e6; }
+      tr:nth-child(even) td { background:#fafbfc; }
+      @media print { body { margin:12mm; } button { display:none; } h2 { page-break-after:avoid; } tr { page-break-inside:avoid; } }
+    </style></head>
+    <body onload="window.focus()">
+      <h1>Adjudicación de contratos — ${grupos.length === 1 ? "centro" : "por centro"}</h1>
+      <p class="sub">Generado el ${esc(hoy)} · ${grupos.length} centro(s) · cubiertas ${cub}/${tot}</p>
+      ${secciones}
+      <p style="margin-top:22px"><button onclick="window.print()">🖨️ Imprimir</button></p>
+    </body></html>`;
+
+  const w = window.open("", "_blank", "width=900,height=960");
   if (!w) { aviso("El navegador bloqueó la ventana de impresión. Permite las ventanas emergentes para localhost."); return; }
   w.document.write(html);
   w.document.close();

@@ -23,6 +23,13 @@
   <div class="aviso" id="aviso"></div>
 
   <div class="contenido">
+    <div class="tabs">
+      <button id="tab-cand" class="tab activa" onclick="cambiarVista('cand')">👤 Por candidato</button>
+      <button id="tab-centro" class="tab" onclick="cambiarVista('centro')">🏥 Por centro</button>
+      <div class="relleno"></div>
+      <button class="sec" id="btn-imp-centros" onclick="imprimirTodosCentros()" style="display:none">🖨️ Imprimir todos los centros</button>
+    </div>
+
     <div class="controles">
       <input type="search" id="filtro" placeholder="Buscar candidato (nº, nombre o DNI…)" style="flex:1; min-width:260px">
       <select id="filtro-cestado">
@@ -33,20 +40,26 @@
       <span class="mini" id="cand-cuenta" style="align-self:center"></span>
     </div>
 
-    <div class="tabla-envoltura">
-      <table>
-        <thead>
-          <tr>
-            <th style="width:60px">Nº</th>
-            <th>Candidato</th>
-            <th style="width:130px">DNI</th>
-            <th style="width:70px">Puntos</th>
-            <th>Contrato asignado</th>
-            <th style="width:250px">Acciones</th>
-          </tr>
-        </thead>
-        <tbody id="cuerpo"></tbody>
-      </table>
+    <div id="vista-cand">
+      <div class="tabla-envoltura">
+        <table>
+          <thead>
+            <tr>
+              <th style="width:60px">Nº</th>
+              <th>Candidato</th>
+              <th style="width:130px">DNI</th>
+              <th style="width:70px">Puntos</th>
+              <th>Contrato asignado</th>
+              <th style="width:250px">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="cuerpo"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="vista-centro" style="display:none">
+      <div id="centros" class="centros-cont"></div>
     </div>
   </div>
 
