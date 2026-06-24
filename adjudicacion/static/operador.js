@@ -38,7 +38,18 @@ async function cargar() {
   $("c-pend").textContent = d.resumen.pendientes;
   $("hora").textContent = d.actualizado;
   rellenarEstadosSelect();
+  rellenarFiltroCEstado();
   pintar();
+}
+
+function rellenarFiltroCEstado() {
+  const sel = $("filtro-cestado");
+  const actual = sel.value;
+  sel.innerHTML = '<option value="">Todos los candidatos</option>'
+    + '<option value="__sin">Sin asignar</option>'
+    + '<option value="__asig">Asignados</option>'
+    + (ESTADO.estados || []).map(e => `<option value="${esc(e)}">${esc(e)}</option>`).join("");
+  sel.value = actual;
 }
 
 function _claveFecha(s) {
@@ -72,13 +83,26 @@ function puestosDe(cand) {
   return POR_CAND[String(cand.numero)] || [];
 }
 
+// Estados válidos para un candidato SIN contrato (todos menos "Aceptado").
+function estadosCandidato() {
+  return (ESTADO.estados || []).filter(e => e !== "Aceptado");
+}
+
+// Estado efectivo: si tiene contrato, el del contrato; si no, su estado de candidato.
+function estadoEfectivo(c) {
+  const ps = puestosDe(c);
+  if (ps.length) return ps[0].estado;
+  return (c.oferta_estado || "Pendiente");
+}
+
 function candidatosFiltrados() {
   const txt = $("filtro").value.trim().toLowerCase();
   const est = $("filtro-cestado").value;
   return (ESTADO.candidatos || []).filter(c => {
     const asignado = puestosDe(c).length > 0;
     if (est === "__sin" && asignado) return false;
-    if (est === "__asig" && !asignado) return false;
+    else if (est === "__asig" && !asignado) return false;
+    else if (est && est !== "__sin" && est !== "__asig" && estadoEfectivo(c) !== est) return false;
     if (txt) {
       const blob = [c.numero, c.nombre, c.dni, c.telefono].join(" ").toLowerCase();
       if (!blob.includes(txt)) return false;
@@ -97,10 +121,11 @@ function pintar() {
   cuerpo.innerHTML = filas.map(c => {
     const ps = puestosDe(c);
     const asignado = ps.length > 0;
+    const eff = estadoEfectivo(c);
     const contrato = asignado
       ? ps.map(p => `<div><b>${esc(p.centro)}</b> <span class="mini">${fechas(p)}</span>
             <span class="pill" data-e="${esc(p.estado)}">${esc(p.estado)}</span></div>`).join("")
-      : '<span class="mini">—</span>';
+      : `<span class="pill" data-e="${esc(eff)}">${esc(eff)}</span> <span class="mini">sin contrato</span>`;
     const acciones = asignado
       ? ps.map(p => `
           <select onchange="cambiarEstado(${p.id}, this.value)" title="Cambiar estado">
@@ -109,7 +134,10 @@ function pintar() {
           <button class="peligro" onclick="liberar(${p.id})" title="Liberar contrato">✕</button>`).join("")
         + `<button class="sec" onclick="abrirAsignar(${c.numero})">Otro contrato</button>`
         + `<button class="sec" onclick="imprimirInforme(${c.numero})" title="Imprimir informe de adjudicación">🖨️ Informe</button>`
-      : `<button onclick="abrirAsignar(${c.numero})">Asignar contrato</button>`;
+      : `<select onchange="estadoCandidato(${c.numero}, this.value)" title="Estado del candidato (sin contrato)">
+            ${estadosCandidato().map(e => `<option ${e === eff ? 'selected' : ''}>${esc(e)}</option>`).join("")}
+          </select>
+          <button onclick="abrirAsignar(${c.numero})">Asignar contrato</button>`;
     return `<tr class="${asignado ? 'asignado' : ''}">
       <td><b>${esc(c.numero)}</b></td>
       <td>${esc(c.nombre)}</td>
@@ -133,6 +161,13 @@ async function cambiarEstado(id, estado) {
 async function liberar(id) {
   if (!confirm("¿Liberar este contrato y dejarlo de nuevo por ofertar?")) return;
   const d = await api("/api/liberar", postJSON({ puesto_id: id }));
+  if (!d.ok) aviso(d.error);
+  cargar();
+}
+
+// Estado de un candidato SIN contrato (no contesta, renuncia, contactado…).
+async function estadoCandidato(numero, estado) {
+  const d = await api("/api/estado_candidato", postJSON({ numero, estado }));
   if (!d.ok) aviso(d.error);
   cargar();
 }

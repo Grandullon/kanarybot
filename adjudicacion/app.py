@@ -166,6 +166,14 @@ def api_liberar():
     return jsonify({"ok": ok, "error": store.ultimo_error})
 
 
+@app.route("/api/estado_candidato", methods=["POST"])
+def api_estado_candidato():
+    store = _store()
+    data = request.json or {}
+    ok = store.estado_candidato(data.get("numero"), data.get("estado"))
+    return jsonify({"ok": ok, "error": store.ultimo_error})
+
+
 def _abrir_navegador():
     webbrowser.open("http://localhost:5000/")
 

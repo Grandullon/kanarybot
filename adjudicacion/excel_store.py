@@ -244,6 +244,7 @@ class ExcelStore:
             i_let = _idx(cab, c.get("col_letra"))
             i_tlf = _idx(cab, c.get("col_telefono"))
             i_pts = _idx(cab, c.get("col_puntos"))
+            i_oest = _idx(cab, c.get("col_oferta_estado"))
 
             lista = []
             numero = 0
@@ -259,6 +260,7 @@ class ExcelStore:
                     "dni": self._dni_completo(_valor(fila, i_dni), _valor(fila, i_let)),
                     "telefono": _valor(fila, i_tlf),
                     "puntos": _valor(fila, i_pts),
+                    "oferta_estado": _valor(fila, i_oest),  # estado a nivel de candidato
                 })
         finally:
             wb.close()
@@ -537,6 +539,21 @@ class ExcelStore:
         return self._editar(p["ruta"], p["hoja"], accion,
                             extra_cols=(COL_NUM, COL_DNI_AUX, COL_HORA, COL_FECHA), congelar=True)
 
+    def estado_candidato(self, numero, estado):
+        """Fija el estado de un candidato aunque no tenga contrato (renuncia, no contesta…).
+
+        Se guarda en la columna 'Oferta Estado' del listado definitivo.
+        """
+        with self.lock:
+            cand = self.candidato_por_numero(numero)
+            if cand is None:
+                self.ultimo_error = "No se encontró el candidato indicado."
+                return False
+            if not self._marcar_candidato_estado(numero, estado):
+                return False
+            self.ultimo_error = None
+            return True
+
     def _marcar_candidato(self, cand, estado, aceptada, datos):
         c = self.config["candidatos"]
 
@@ -546,15 +563,19 @@ class ExcelStore:
             _escribe(ws, f, cab, c.get("col_oferta_aceptada"), aceptada)
             _escribe(ws, f, cab, c.get("col_oferta_datos"), datos)
 
-        return self._editar(c["ruta"], c["hoja"], acc)
+        ok = self._editar(c["ruta"], c["hoja"], acc)
+        self._cache_candidatos = None   # el estado del candidato cambió en el Excel
+        return ok
 
     def _marcar_candidato_estado(self, numero, estado):
         cand = self.candidato_por_numero(numero)
         if cand is None:
             return True
         c = self.config["candidatos"]
-        return self._editar(c["ruta"], c["hoja"], lambda ws, cab:
-                            _escribe(ws, cand["fila"], cab, c.get("col_oferta_estado"), estado))
+        ok = self._editar(c["ruta"], c["hoja"], lambda ws, cab:
+                          _escribe(ws, cand["fila"], cab, c.get("col_oferta_estado"), estado))
+        self._cache_candidatos = None
+        return ok
 
     def _limpiar_candidato(self, numero):
         cand = self.candidato_por_numero(numero)
@@ -568,7 +589,9 @@ class ExcelStore:
             _escribe(ws, f, cab, c.get("col_oferta_aceptada"), None)
             _escribe(ws, f, cab, c.get("col_oferta_datos"), None)
 
-        return self._editar(c["ruta"], c["hoja"], acc)
+        ok = self._editar(c["ruta"], c["hoja"], acc)
+        self._cache_candidatos = None
+        return ok
 
     def _cab_puestos(self):
         p = self.config["puestos"]

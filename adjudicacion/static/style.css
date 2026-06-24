@@ -70,10 +70,10 @@ tr.asignado { background: var(--verde-fondo); }
 .tabla-envoltura { max-height: calc(100vh - 230px); overflow: auto; border: 1px solid var(--borde); border-radius: 8px; }
 
 /* Etiquetas de estado */
-.pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; }
-.pill.Aceptado { background: #e8f5e9; color: var(--verde); }
-.pill.Contactado { background: #e3f2fd; color: var(--azul-claro); }
-.pill.Pendiente { background: #f1f3f4; color: var(--gris); }
+.pill { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #f1f3f4; color: var(--gris); }
+.pill.Aceptado, .pill[data-e="Aceptado"] { background: #e8f5e9; color: var(--verde); }
+.pill.Contactado, .pill[data-e="Contactado"] { background: #e3f2fd; color: var(--azul-claro); }
+.pill.Pendiente, .pill[data-e="Pendiente"] { background: #f1f3f4; color: var(--gris); }
 .pill.No.contesta, .pill[data-e="No contesta"] { background: #fff3e0; color: var(--ambar); }
 .pill[data-e="Renuncia"] { background: #ffebee; color: var(--rojo); }
 
