@@ -389,6 +389,7 @@ class ExcelStore:
 
         return {
             "puestos": puestos,
+            "candidatos": list(por_numero.values()),
             "estados": self.config.get("estados", ESTADOS),
             "resumen": {
                 "total": len(puestos),

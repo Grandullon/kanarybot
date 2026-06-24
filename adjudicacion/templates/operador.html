@@ -24,31 +24,25 @@
 
   <div class="contenido">
     <div class="controles">
-      <input type="search" id="filtro" placeholder="Buscar puesto (centro, fechas, turno, persona…)" style="flex:1; min-width:220px">
-      <select id="filtro-centro"><option value="">Todos los centros</option></select>
-      <select id="filtro-fini"><option value="">Cualquier inicio</option></select>
-      <select id="filtro-ffin"><option value="">Cualquier fin</option></select>
-      <select id="filtro-dias"><option value="">Todos los días</option></select>
-      <select id="filtro-estado">
-        <option value="">Todos los estados</option>
-        <option value="__pend">Solo por ofertar</option>
-        <option value="__adj">Solo adjudicados</option>
+      <input type="search" id="filtro" placeholder="Buscar candidato (nº, nombre o DNI…)" style="flex:1; min-width:260px">
+      <select id="filtro-cestado">
+        <option value="">Todos los candidatos</option>
+        <option value="__sin">Sin asignar</option>
+        <option value="__asig">Asignados</option>
       </select>
-      <input type="search" id="filtro-persona" placeholder="Persona asignada (nombre o nº)" style="min-width:200px">
+      <span class="mini" id="cand-cuenta" style="align-self:center"></span>
     </div>
 
     <div class="tabla-envoltura">
       <table>
         <thead>
           <tr>
-            <th style="width:50px">#</th>
-            <th>Centro</th>
-            <th>Fechas</th>
-            <th>Días</th>
-            <th>Turno</th>
-            <th>Persona asignada</th>
-            <th>Estado</th>
-            <th style="width:230px">Acciones</th>
+            <th style="width:60px">Nº</th>
+            <th>Candidato</th>
+            <th style="width:130px">DNI</th>
+            <th style="width:70px">Puntos</th>
+            <th>Contrato asignado</th>
+            <th style="width:250px">Acciones</th>
           </tr>
         </thead>
         <tbody id="cuerpo"></tbody>
@@ -56,22 +50,28 @@
     </div>
   </div>
 
-  <!-- Modal de asignación -->
+  <!-- Modal: selector de contrato para el candidato elegido -->
   <div class="fondo-modal" id="modal-fondo">
-    <div class="modal">
-      <h2 id="modal-titulo">Asignar puesto</h2>
-      <div class="campo">
-        <label>Candidato (escribe nº, nombre o DNI)</label>
-        <input type="search" id="busca-cand" placeholder="Ej.: 177  ·  Marisa  ·  52516294A" autocomplete="off">
-        <div class="sugerencias" id="sugerencias" style="display:none"></div>
+    <div class="modal modal-ancho">
+      <h2 id="modal-titulo">Asignar contrato</h2>
+      <div class="controles" style="margin:0 0 10px">
+        <input type="search" id="m-busca" placeholder="Buscar contrato (centro, fechas, turno…)" style="flex:1; min-width:200px" autocomplete="off">
+        <select id="m-centro"><option value="">Todos los centros</option></select>
+        <select id="m-dias"><option value="">Todos los días</option></select>
+        <select id="m-fini"><option value="">Cualquier inicio</option></select>
+        <select id="m-disp">
+          <option value="__libres">Solo libres</option>
+          <option value="">Todos</option>
+        </select>
       </div>
+      <div id="m-lista" class="lista-contratos"></div>
       <div class="campo">
         <label>Estado</label>
         <select id="modal-estado"></select>
       </div>
       <div class="acciones">
         <button class="sec" id="modal-cancelar">Cancelar</button>
-        <button id="modal-aceptar" disabled>Asignar</button>
+        <button id="modal-aceptar" disabled>Asignar contrato</button>
       </div>
     </div>
   </div>

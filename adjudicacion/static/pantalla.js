@@ -89,7 +89,8 @@ function pintarTablon(puestos) {
     const c = centros[k] || (centros[k] = { nombre: (p.centro || "(Sin centro)").trim(), ambitos: new Set(), tipos: {}, quedan: 0, total: 0 });
     if ((p.ambito || "").trim()) c.ambitos.add(p.ambito.trim());
     const tk = `${p.duracion}|${p.fecha_inicio}|${p.fecha_fin}|${p.turno}|${p.ambito}`;
-    const t = c.tipos[tk] || (c.tipos[tk] = { p, libres: 0, dadas: 0 });
+    const t = c.tipos[tk] || (c.tipos[tk] = { p, libres: 0, dadas: 0, plazas: [] });
+    t.plazas.push(p);
     c.total++;
     if (p.adjudicado) { t.dadas++; } else { t.libres++; c.quedan++; }
   });
@@ -97,8 +98,9 @@ function pintarTablon(puestos) {
   const orden = Object.values(centros).sort((a, b) =>
     (a.quedan === 0) - (b.quedan === 0) || a.nombre.localeCompare(b.nombre));
 
-  // Firma: solo redibuja si cambian conteos (así el autoscroll no se reinicia en cada refresco).
-  const sig = orden.map(c => c.nombre + ":" + Object.values(c.tipos).map(t => t.libres + "/" + t.dadas).join(",")).join("|");
+  // Firma por plaza: solo redibuja cuando alguna celda cambia de color (preserva el autoscroll).
+  const sig = orden.map(c => c.nombre + ":" + Object.values(c.tipos)
+    .map(t => t.plazas.slice().sort((a, b) => a.id - b.id).map(p => p.adjudicado ? "1" : "0").join("")).join(",")).join("|");
   if (sig === sigTablon) return;
   sigTablon = sig;
 
@@ -112,19 +114,21 @@ function tarjetaCentro(c) {
   const tipos = Object.values(c.tipos).map(t => {
     const p = t.p, total = t.libres + t.dadas;
     const ambTipo = (!unico && (p.ambito || "").trim()) ? p.ambito.trim() : "";
-    const det = [ambTipo, rangoMeses(p), turnoTxt(p), (p.necesidad || "").trim()].filter(s => s && s.trim()).map(esc).join(" · ");
+    const etq = [mesesHumano(p), ambTipo, rangoMeses(p), turnoTxt(p), (p.necesidad || "").trim()]
+      .filter(s => s && String(s).trim()).map(esc).join(" · ");
+    const celdas = t.plazas.slice().sort((a, b) => a.id - b.id).map(pl => {
+      const num = pl.id - 1;
+      const quien = pl.adjudicado ? " · " + (pl.nombre_pila || pl.asignado_a || "") : "";
+      return `<span class="celda ${pl.adjudicado ? "dada" : "libre"}" title="${esc("#" + num + " · " + (pl.centro || "") + quien)}">${num}</span>`;
+    }).join("");
     return `<div class="tipo">
-        <div class="lin1">
-          <span class="durh">${esc(mesesHumano(p))}</span>
-          <span class="cuenta">Quedan <b>${t.libres}</b> de ${total}</span>
-        </div>
-        ${det ? `<div class="det">${det}</div>` : ""}
-        <div class="barra-tipo"><span class="seg libre" style="flex:${t.libres}"></span><span class="seg dada" style="flex:${t.dadas}"></span></div>
+        <div class="etq-tipo">${etq} <span class="cnt">${t.libres}/${total}</span></div>
+        <div class="bingo">${celdas}</div>
       </div>`;
   }).join("");
   const urgenteCentro = (c.quedan > 0 && c.quedan <= 2) ? "urge" : "";
   const badge = c.quedan > 0
-    ? `<span class="quedan-grande ${urgenteCentro}">Quedan <b>${c.quedan}</b></span>`
+    ? `<span class="quedan-grande ${urgenteCentro}">Quedan <b>${c.quedan}</b> / ${c.total}</span>`
     : `<span class="quedan-grande cero">Completo</span>`;
   const sub = unico ? `<div class="amb">${esc(unico)}</div>` : "";
   return `<div class="centro ${c.quedan === 0 ? "agotado" : ""}">
