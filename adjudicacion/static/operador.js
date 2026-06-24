@@ -7,6 +7,7 @@ let CAND_ACTUAL = null;    // candidato cuyo contrato se está eligiendo en el m
 let PUESTO_SELECC = null;  // contrato elegido en el modal
 let VISTA = 'cand';        // 'cand' (por candidato) | 'centro' (por centro)
 let GRUPOS = [];           // [ [centro, [puestos...]], ... ] de la última vista por centro
+let CENTROS_ABIERTOS = new Set();  // nombres de centro desplegados (acordeón)
 
 const $ = (id) => document.getElementById(id);
 
@@ -121,6 +122,7 @@ function cambiarVista(v) {
   $("vista-centro").style.display = v === 'centro' ? "" : "none";
   $("filtro-cestado").style.display = v === 'cand' ? "" : "none";
   $("btn-imp-centros").style.display = v === 'centro' ? "" : "none";
+  $("btn-toggle-todos").style.display = v === 'centro' ? "" : "none";
   $("filtro").placeholder = v === 'cand'
     ? "Buscar candidato (nº, nombre o DNI…)"
     : "Buscar centro o persona asignada…";
@@ -148,7 +150,7 @@ function agruparPorCentro() {
 function pintarCentros() {
   GRUPOS = agruparPorCentro();
   const txt = $("filtro").value.trim().toLowerCase();
-  let totC = 0, cubC = 0;
+  let totC = 0, cubC = 0, mostrados = 0;
   const cards = GRUPOS.map(([centro, ps], i) => {
     const cubiertas = ps.filter(p => p.adjudicado).length;
     totC += ps.length; cubC += cubiertas;
@@ -157,35 +159,54 @@ function pintarCentros() {
         || ps.some(p => `${p.num_candidato || ""} ${p.asignado_a || ""}`.toLowerCase().includes(txt));
       if (!hay) return "";
     }
+    mostrados++;
+    // Al buscar, se abren los centros que coinciden para ver el resultado.
+    const abierto = txt ? true : CENTROS_ABIERTOS.has(centro);
     const pct = ps.length ? Math.round(cubiertas / ps.length * 100) : 0;
-    const filas = ps.map(p => {
-      const persona = p.num_candidato
-        ? `<b>Nº${esc(p.num_candidato)}</b> · ${esc(p.asignado_a || "")}`
-        : '<span class="libre-tag">libre</span>';
-      return `<tr class="${p.adjudicado ? '' : 'fila-libre'}">
-        <td class="mini">#${esc(p.id - 1)}</td>
-        <td>${esc(p.ambito || p.necesidad || "—")}</td>
-        <td class="mini">${fechas(p) || "—"}</td>
-        <td class="mini">${esc(p.turno || "")}</td>
-        <td>${p.adjudicado ? `<span class="pill" data-e="${esc(p.estado)}">${esc(p.estado)}</span>` : ""}</td>
-        <td>${persona}</td>
-      </tr>`;
-    }).join("");
-    return `<div class="centro-card">
-      <div class="centro-head">
+    const tabla = abierto ? `<table class="centro-tabla">
+        <thead><tr><th>#</th><th>Ámbito / Necesidad</th><th>Fechas</th><th>Turno</th><th>Estado</th><th>Persona asignada</th></tr></thead>
+        <tbody>${ps.map(p => {
+          const persona = p.num_candidato
+            ? `<b>Nº${esc(p.num_candidato)}</b> · ${esc(p.asignado_a || "")}`
+            : '<span class="libre-tag">libre</span>';
+          return `<tr class="${p.adjudicado ? '' : 'fila-libre'}">
+            <td class="mini">#${esc(p.id - 1)}</td>
+            <td>${esc(p.ambito || p.necesidad || "—")}</td>
+            <td class="mini">${fechas(p) || "—"}</td>
+            <td class="mini">${esc(p.turno || "")}</td>
+            <td>${p.adjudicado ? `<span class="pill" data-e="${esc(p.estado)}">${esc(p.estado)}</span>` : ""}</td>
+            <td>${persona}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table>` : "";
+    return `<div class="centro-card${abierto ? ' abierto' : ''}">
+      <div class="centro-head" onclick="toggleCentro(${i})">
+        <span class="chevron">${abierto ? "▾" : "▸"}</span>
         <h3>${esc(centro)}</h3>
         <span class="centro-cuenta${cubiertas === ps.length ? ' full' : ''}">Cubiertas ${cubiertas}/${ps.length}</span>
         <div class="barra-mini"><span style="width:${pct}%"></span></div>
-        <button class="sec" onclick="imprimirCentro(${i})" title="Imprimir resumen de este centro">🖨️ Imprimir</button>
+        <button class="sec" onclick="event.stopPropagation(); imprimirCentro(${i})" title="Imprimir resumen de este centro">🖨️ Imprimir</button>
       </div>
-      <table class="centro-tabla">
-        <thead><tr><th>#</th><th>Ámbito / Necesidad</th><th>Fechas</th><th>Turno</th><th>Estado</th><th>Persona asignada</th></tr></thead>
-        <tbody>${filas}</tbody>
-      </table>
+      ${tabla}
     </div>`;
   }).join("");
-  $("cand-cuenta").textContent = `Centros ${GRUPOS.length} · Cubiertas ${cubC}/${totC}`;
+  $("cand-cuenta").textContent = `Centros ${mostrados}${txt ? "/" + GRUPOS.length : ""} · Cubiertas ${cubC}/${totC}`;
   $("centros").innerHTML = cards || '<div class="mini" style="padding:20px">Sin centros que coincidan con la búsqueda.</div>';
+}
+
+function toggleCentro(i) {
+  const g = GRUPOS[i];
+  if (!g) return;
+  const nombre = g[0];
+  if (CENTROS_ABIERTOS.has(nombre)) CENTROS_ABIERTOS.delete(nombre);
+  else CENTROS_ABIERTOS.add(nombre);
+  pintarCentros();
+}
+
+function toggleTodosCentros() {
+  if (CENTROS_ABIERTOS.size < GRUPOS.length) GRUPOS.forEach(([c]) => CENTROS_ABIERTOS.add(c));
+  else CENTROS_ABIERTOS.clear();
+  pintarCentros();
 }
 
 // ---------- Vista por candidato ----------

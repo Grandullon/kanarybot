@@ -88,13 +88,16 @@ button.tab:hover { background: var(--gris-fondo); }
 button.tab.activa { background: var(--azul); color: #fff; border-color: var(--azul); }
 
 /* Vista por centro */
-.centros-cont { display: flex; flex-direction: column; gap: 14px; max-height: calc(100vh - 250px); overflow: auto; padding-right: 4px; }
+.centros-cont { display: flex; flex-direction: column; gap: 12px; }
 .centro-card { border: 1px solid var(--borde); border-radius: 10px; background: #fff; overflow: hidden; }
-.centro-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--gris-fondo); border-bottom: 1px solid var(--borde); }
+.centro-head { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--gris-fondo); cursor: pointer; user-select: none; }
+.centro-card.abierto .centro-head { border-bottom: 1px solid var(--borde); }
+.centro-head:hover { background: #e9edf2; }
+.centro-head .chevron { color: var(--gris); font-size: 12px; width: 12px; flex: 0 0 auto; }
 .centro-head h3 { margin: 0; font-size: 16px; color: var(--azul); flex: 0 1 auto; }
 .centro-cuenta { font-size: 13px; font-weight: 700; color: var(--ambar); white-space: nowrap; }
 .centro-cuenta.full { color: var(--verde); }
-.centro-head .barra-mini { flex: 1; height: 8px; background: #e3e8ee; border-radius: 999px; overflow: hidden; min-width: 60px; }
+.centro-head .barra-mini { flex: 1; height: 8px; background: #e3e8ee; border-radius: 999px; overflow: hidden; min-width: 60px; max-width: 240px; }
 .centro-head .barra-mini span { display: block; height: 100%; background: var(--verde); }
 .centro-head button { margin-left: auto; padding: 5px 10px; font-size: 13px; }
 .centro-tabla th { position: static; }

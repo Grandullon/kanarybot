@@ -19,6 +19,11 @@ function mesesHumano(p) {
   const meses = Math.max(1, Math.round(+v / 30));
   return meses === 1 ? "1 mes" : `${meses} meses`;
 }
+// Duración exacta en días, cuando viene como número: "92 días" (si no, "").
+function diasTxt(p) {
+  const v = String(p.duracion == null ? "" : p.duracion).trim();
+  return /^\d+$/.test(v) ? `${v} días` : "";
+}
 function turnoIcon(t) {
   const n = (t || "").toLowerCase();
   if (/noche|nocturn/.test(n)) return "🌙";
@@ -99,7 +104,7 @@ function tarjetaCentro(c) {
   const tipos = Object.values(c.tipos).map(t => {
     const p = t.p, total = t.libres + t.dadas;
     const ambTipo = (!unico && (p.ambito || "").trim()) ? p.ambito.trim() : "";
-    const etq = [mesesHumano(p), ambTipo, fechasFull(p), turnoTxt(p), (p.necesidad || "").trim()]
+    const etq = [mesesHumano(p), diasTxt(p), ambTipo, fechasFull(p), turnoTxt(p), (p.necesidad || "").trim()]
       .filter(s => s && String(s).trim()).map(esc).join(" · ");
     const celdas = t.plazas.slice().sort((a, b) => a.id - b.id).map(pl => {
       const num = pl.id - 1;
